@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { NextPage } from "next";
 import { Breadcrumbs } from "@/components/common/breadcrumbs";
-import DashboardLayout from "@/components/layouts/dashboard-layout";
+import DashboardLayout from "@/components/layouts/DashboardLayout";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -1204,8 +1204,8 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
       <div className="h-full">
         {/* Main Content */}
         <div className="flex-1 overflow-auto">
-          {/* Red-Orange Gradient Border */}
-          <div className="w-full h-1 bg-gradient-to-r from-red-500 to-orange-400"></div>
+          {/* Green Gradient Border */}
+          <div className="w-full h-1 bg-gradient-to-r from-green-500 to-green-600"></div>
           
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
             <Breadcrumbs
@@ -1217,11 +1217,10 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
               className="p-6 pb-0"
             />
             
-            {/* Horizontal Navigation Bar */}
-            <div className="mb-6 bg-white rounded-lg shadow-sm border border-red-100 overflow-hidden">
-              <div className="flex space-x-1 overflow-x-auto py-2 px-2 scrollbar-hide">
-                <a href="/inventory" className="flex items-center px-3 py-2 rounded-md transition-all whitespace-nowrap text-sm
-                      hover:bg-red-50 text-gray-700 hover:text-red-600">
+            {/* Quick Navigation */}
+            <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+              <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
+                <a href="/inventory" className="flex items-center px-3 py-2 rounded-md transition-colors whitespace-nowrap text-sm hover:bg-green-50 text-gray-700 hover:text-green-600">
                   <span className="mr-1.5">
                     <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 576 512" className="w-4 h-4" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
                       <path d="M280.37 148.26L96 300.11V464a16 16 0 0 0 16 16l112.06-.29a16 16 0 0 0 15.92-16V368a16 16 0 0 1 16-16h64a16 16 0 0 1 16 16v95.64a16 16 0 0 0 16 16.05L464 480a16 16 0 0 0 16-16V300L295.67 148.26a12.19 12.19 0 0 0-15.3 0zM255.83 432a175.61 175.61 0 0 1-146-77.8l101.8 4.87a12 12 0 0 0 12.57-12v-47.4a12 12 0 0 0-12-12H12a12 12 0 0 0-12 12V500a12 12 0 0 0 12 12h47.35a12 12 0 0 0 12-12.6l-4.15-82.57A247.17 247.17 0 0 0 255.83 504c121.11 0 221.93-86.92 243.55-201.82a12 12 0 0 0-11.8-14.18h-49.05a12 12 0 0 0-11.67 9.26A175.86 175.86 0 0 1 255.83 432z"></path>
@@ -1230,7 +1229,7 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
                   <span>Beranda</span>
                 </a>
                 <a href="/inventory/products" className="flex items-center px-3 py-2 rounded-md transition-all whitespace-nowrap text-sm
-                      hover:bg-red-50 text-gray-700 hover:text-red-600">
+                      hover:bg-green-50 text-gray-700 hover:text-green-600">
                   <span className="mr-1.5">
                     <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 640 512" className="w-4 h-4" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
                       <path d="M425.7 256c-16.9 0-32.8-9-41.4-23.4L320 126l-64.2 106.6c-8.7 14.5-24.6 23.5-41.5 23.5-4.5 0-9-.6-13.3-1.9L64 215v178c0 14.7 10 27.5 24.2 31l216.2 54.1c10.2 2.5 20.9 2.5 31 0L551.8 424c14.2-3.6 24.2-16.4 24.2-31V215l-137 39.1c-4.3 1.3-8.8 1.9-13.3 1.9zm212.6-112.2L586.8 41c-3.1-6.2-9.8-9.8-16.7-8.9L494 110.1c-9-9-21.2-14.1-33.9-14.1H416V48c0-26.5-21.5-48-48-48H48C21.5 0 0 21.5 0 48v320c0 26.5 21.5 48 48 48h16c0 53 43 96 96 96s96-43 96-96h128c0 53 43 96 96 96s96-43 96-96h48c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16zM160 464c-26.5 0-48-21.5-48-48s21.5-48 48-48 48 21.5 48 48-21.5 48-48 48zm320 0c-26.5 0-48-21.5-48-48s21.5-48 48-48 48 21.5 48 48-21.5 48-48 48zm80-208H416V144h44.1l99.9 99.9V256z"></path>
@@ -1239,7 +1238,7 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
                   <span>Produk</span>
                 </a>
                 <a href="/inventory/stocktake" className="flex items-center px-3 py-2 rounded-md transition-all whitespace-nowrap text-sm
-                      hover:bg-red-50 text-gray-700 hover:text-red-600">
+                      hover:bg-green-50 text-gray-700 hover:text-green-600">
                   <span className="mr-1.5">
                     <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 384 512" className="w-4 h-4" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
                       <path d="M336 64h-16V243.9c0-12.7-5.1-24.9-14.1-33.9L320 126l-64.2 106.6c-8.7 14.5-24.6 23.5-41.5 23.5-4.5 0-9-.6-13.3-1.9L64 215v178c0 14.7 10 27.5 24.2 31l216.2 54.1c10.2 2.5 20.9 2.5 31 0L551.8 424c14.2-3.6 24.2-16.4 24.2-31V215l-137 39.1c-4.3 1.3-8.8 1.9-13.3 1.9zm212.6-112.2L586.8 41c-3.1-6.2-9.8-9.8-16.7-8.9L494 110.1c-9-9-21.2-14.1-33.9-14.1H416V48c0-26.5-21.5-48-48-48H48C21.5 0 0 21.5 0 48v320c0 26.5 21.5 48 48 48h16c0 53 43 96 96 96s96-43 96-96h128c0 53 43 96 96 96s96-43 96-96h48c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16zM160 464c-26.5 0-48-21.5-48-48s21.5-48 48-48 48 21.5 48 48-21.5 48-48 48zm320 0c-26.5 0-48-21.5-48-48s21.5-48 48-48 48 21.5 48 48-21.5 48-48 48zm80-208H416V144h44.1l99.9 99.9V256z"></path>
@@ -1305,43 +1304,27 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
             </div>
             
             {/* Header */}
-            <div className="relative mb-6 overflow-hidden bg-gradient-to-r from-red-600 to-orange-500 rounded-xl shadow-lg border border-red-200">
-              <div className="absolute right-0 top-0 w-72 h-72 rounded-full bg-gradient-to-br from-orange-300 to-red-400 opacity-20 blur-2xl transform translate-x-16 -translate-y-16"></div>
-              <div className="absolute left-0 bottom-0 w-48 h-48 rounded-full bg-gradient-to-tr from-red-400 to-orange-300 opacity-20 blur-xl transform -translate-x-8 translate-y-12"></div>
-              
-              {/* Elementos decorativos SVG */}
-              <div className="absolute right-10 top-10 opacity-10">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-24 w-24" fill="white" viewBox="0 0 24 24">
-                  <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM18 14H14V18H10V14H6V10H10V6H14V10H18V14Z"></path>
-                </svg>
-              </div>
-              <div className="absolute right-40 bottom-8 opacity-10">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-14 w-14" fill="white" viewBox="0 0 24 24">
-                  <path d="M19 8h-3V3H8v5H5v11h14V8zM10 5h4v3h-4V5zm7 12H7v-7h2v2h6v-2h2v7z"></path>
-                </svg>
-              </div>
-              
-              <div className="px-6 py-6">
-                <h1 className="text-3xl font-bold text-white flex items-center">
-                  <FaTruck className="mr-1 text-red-600" /> <FaUndo className="mx-2 text-red-600" /> Penerimaan & Retur Barang
-                </h1>
-                <p className="text-gray-200 mt-1">
-                  Catat dan kelola penerimaan dan retur barang ke gudang
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <div>
-                
-              </div>
-              <div className="flex items-center space-x-3">
-                <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => router.push('/inventory/receipt-history')}>
-                  <FaFile className="mr-2 h-4 w-4" /> Riwayat Penerimaan
-                </Button>
-                <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => router.push('/inventory/return-history')}>
-                  <FaExchangeAlt className="mr-2 h-4 w-4" /> Riwayat Retur
-                </Button>
+            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-sm p-6 mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-white flex items-center">
+                    <FaWarehouse className="mr-3 h-6 w-6" /> 
+                    Penerimaan & Retur Barang
+                  </h1>
+                  <p className="text-green-50 mt-1 text-sm">
+                    Kelola penerimaan dan retur barang dari supplier
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="bg-white/10 border-white/20 text-white hover:bg-white/20" 
+                    onClick={() => router.push('/inventory/receipt-history')}
+                  >
+                    <FaFile className="mr-2 h-3 w-3" /> Riwayat
+                  </Button>
+                </div>
               </div>
             </div>
             
@@ -1349,13 +1332,13 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
               <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
                 <TabsTrigger 
                   value="receive"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-400 data-[state=active]:text-white"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white"
                 >
                   <FaTruck className="mr-2 h-4 w-4" /> Penerimaan
                 </TabsTrigger>
                 <TabsTrigger 
                   value="return"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-400 data-[state=active]:text-white"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white"
                 >
                   <FaExchangeAlt className="mr-2 h-4 w-4" /> Retur
                 </TabsTrigger>
@@ -1366,7 +1349,7 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
                   {/* Left Column (2/3) */}
                   <div className="lg:col-span-2 space-y-6">
                     {currentView === "integration-status" && (
-                      <Card className="border-red-200">
+                      <Card className="border-green-200">
                         <CardHeader>
                           <CardTitle className="text-red-700 flex items-center">
                             <FaSync className="mr-2 h-5 w-5" /> Status Integrasi
@@ -1396,12 +1379,12 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
                     )}
                     
                     {/* Receipt Details Card */}
-                    <Card className="border-red-200">
+                    <Card className="border-gray-200">
                       <CardHeader>
-                        <CardTitle className="text-red-700 flex items-center">
-                          <FaTruck className="mr-2 h-5 w-5" /> Detail Penerimaan
+                        <CardTitle className="text-gray-900 flex items-center">
+                          <FaTruck className="mr-2 h-5 w-5 text-green-600" /> Detail Penerimaan
                         </CardTitle>
-                        <CardDescription className="text-red-600/80">
+                        <CardDescription className="text-gray-600">
                           Masukkan informasi penerimaan barang
                         </CardDescription>
                       </CardHeader>
@@ -1440,7 +1423,7 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
                               
                               <Button
                                 variant="outline"
-                                className="border-red-200 text-red-600 hover:bg-red-50"
+                                className="border-green-200 text-green-600 hover:bg-green-50"
                                 onClick={() => loadPendingOrders()}
                                 disabled={isLoadingPOs}
                               >
@@ -1530,7 +1513,7 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => window.open('/inventory/master/suppliers', '_blank')}
-                                className="ml-2 border-red-200 text-red-600 hover:bg-red-50"
+                                className="ml-2 border-green-200 text-green-600 hover:bg-green-50"
                                 disabled={isLoadingSuppliers}
                               >
                                 {isLoadingSuppliers ? (
@@ -1582,12 +1565,12 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
 
                     
                     {/* Receipt Items Card */}
-                    <Card className="border-red-200">
+                    <Card className="border-gray-200">
                       <CardHeader>
-                        <CardTitle className="text-red-700 flex items-center">
-                          <FaBoxOpen className="mr-2 h-5 w-5" /> Item Penerimaan
+                        <CardTitle className="text-gray-900 flex items-center">
+                          <FaBoxOpen className="mr-2 h-5 w-5 text-green-600" /> Item Penerimaan
                         </CardTitle>
-                        <CardDescription className="text-red-600/80">
+                        <CardDescription className="text-gray-600">
                           Tambahkan produk yang diterima
                         </CardDescription>
                       </CardHeader>
@@ -1718,7 +1701,7 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
                                       <Button 
                                         variant="ghost" 
                                         size="icon" 
-                                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                        className="text-green-600 hover:text-green-800 hover:bg-green-50"
                                         onClick={() => handleRemoveItem(index)}
                                       >
                                         <FaTrash className="h-4 w-4" />
@@ -1739,7 +1722,7 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
                         
                         <div className="flex justify-center">
                           <Button 
-                            className="mt-4 border-dashed border-2 border-red-300 bg-white text-red-600 hover:bg-red-50 w-full max-w-md mx-auto"
+                            className="mt-4 border-dashed border-2 border-green-300 bg-white text-green-600 hover:bg-green-50 w-full max-w-md mx-auto"
                             onClick={() => {
                               const searchInput = document.getElementById('product-search');
                               if (searchInput) searchInput.focus();
@@ -1755,12 +1738,12 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
                   {/* Right Column (1/3) - Summary & Actions */}
                   <div className="space-y-6">
                     {/* Document Upload for Receipt */}
-                    <Card className="border-red-200">
+                    <Card className="border-gray-200">
                       <CardHeader>
-                        <CardTitle className="text-red-700 flex items-center">
-                          <FaPaperclip className="mr-2 h-5 w-5" /> Dokumen Pendukung
+                        <CardTitle className="text-gray-900 flex items-center">
+                          <FaPaperclip className="mr-2 h-5 w-5 text-green-600" /> Dokumen Pendukung
                         </CardTitle>
-                        <CardDescription className="text-red-600/80">
+                        <CardDescription className="text-gray-600">
                           Unggah dokumen seperti surat jalan, invoice, atau bukti kondisi barang
                         </CardDescription>
                       </CardHeader>
@@ -1774,12 +1757,12 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
                     </Card>
                     
                     {/* Order Summary */}
-                    <Card className="border-red-200">
+                    <Card className="border-gray-200 sticky top-6">
                       <CardHeader>
-                        <CardTitle className="text-red-700">
+                        <CardTitle className="text-gray-900">
                           Ringkasan Penerimaan
                         </CardTitle>
-                        <CardDescription className="text-red-600/80">
+                        <CardDescription className="text-gray-600">
                           Total nilai penerimaan barang
                         </CardDescription>
                       </CardHeader>
@@ -1800,11 +1783,11 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
                           <div className="h-px bg-gray-200 my-2"></div>
                           <div className="flex justify-between font-bold text-lg">
                             <span>Total:</span>
-                            <span className="text-red-600">{formatRupiah(receiptForm.total)}</span>
+                            <span className="text-green-600">{formatRupiah(receiptForm.total)}</span>
                           </div>
                           
                           <Button 
-                            className="w-full mt-4 bg-gradient-to-r from-red-500 to-orange-400 hover:from-red-600 hover:to-orange-500"
+                            className="w-full mt-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
                             onClick={handleProcessReceipt}
                             disabled={isProcessing || receiptItems.length === 0}
                           >
@@ -2268,7 +2251,7 @@ const ReceivePage: NextPage<ReceivePageProps> = () => {
                           </div>
                           
                           <Button 
-                            className="w-full mt-4 bg-gradient-to-r from-red-500 to-orange-400 hover:from-red-600 hover:to-orange-500"
+                            className="w-full mt-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
                           >
                             <FaSave className="mr-2 h-4 w-4" /> Simpan Retur
                           </Button>

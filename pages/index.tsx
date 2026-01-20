@@ -1,4 +1,4 @@
-// Farmanesia Landing Page with Burger Menu - Inspired by Harizma Template
+// Bedagang Landing Page with Burger Menu - Modern Retail Platform
 import React, { useEffect, useState } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
@@ -11,6 +11,8 @@ import toast from 'react-hot-toast';
 import BurgerMenu from '../components/landing/BurgerMenu';
 import Hero from '../components/landing/Hero';
 import Services from '../components/landing/Services';
+import Pricing from '../components/landing/Pricing';
+import Testimonials from '../components/landing/Testimonials';
 
 const Home: NextPage = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -54,15 +56,16 @@ const Home: NextPage = () => {
   return (
     <>
       <Head>
-        <title>FARMANESIA - Sistem Manajemen Apotek Terpadu</title>
-        <meta name="description" content="FARMANESIA - Sistem Manajemen Apotek Terpadu yang efisien" />
+        <title>BEDAGANG - Cloud POS System untuk Bisnis Modern | Free Trial 14 Hari</title>
+        <meta name="description" content="Sistem kasir cloud terlengkap untuk retail, F&B, dan bisnis jasa. Fitur POS, Inventory, CRM, Loyalty Program, Multi-outlet, dan Analytics. Coba gratis 14 hari tanpa kartu kredit!" />
+        <meta name="keywords" content="pos system, cloud pos, sistem kasir, inventory management, loyalty program, retail software, moka pos alternative" />
       </Head>
 
       {/* Loading screen with animation */}
       <AnimatePresence>
         {isLoading && (
           <motion.div 
-            className="fixed inset-0 bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center z-50"
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6 }}
           >
@@ -71,7 +74,7 @@ const Home: NextPage = () => {
               animate={{ opacity: 1, scale: 1 }}
               className="text-white text-4xl font-bold"
             >
-              FARMANESIA
+              BEDAGANG
             </motion.div>
           </motion.div>
         )}
@@ -87,6 +90,12 @@ const Home: NextPage = () => {
         
         {/* Services Section */}
         <Services />
+        
+        {/* Pricing Section */}
+        <Pricing />
+        
+        {/* Testimonials Section */}
+        <Testimonials />
       </div>
     </>
   );

@@ -12,6 +12,7 @@ declare module "next-auth" {
     image?: string | null
     role?: string // Menambahkan properti role
     tenantId?: string // Menambahkan properti tenantId untuk multi-tenancy
+    businessName?: string // Menambahkan properti businessName
     position?: string
     department?: string
     status?: 'ACTIVE' | 'INACTIVE'
@@ -33,6 +34,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string
     role?: string
+    businessName?: string
     position?: string
     department?: string
     status?: 'ACTIVE' | 'INACTIVE'

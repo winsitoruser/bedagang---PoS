@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const sequelize = require('../lib/sequelize');
 
 const PosTransactionItem = sequelize.define('PosTransactionItem', {
   id: {

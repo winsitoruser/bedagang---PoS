@@ -7,7 +7,7 @@ import {
   FaArrowRight
 } from 'react-icons/fa';
 import Link from 'next/link';
-import { useTranslation } from '@/lib/i18n';
+// import { useTranslation } from '@/lib/i18n';
 // Perbaikan import - pastikan nama file sesuai dengan yang ada di direktori
 import FinanceLayout from '@/components/layouts/finance-layout';
 import { formatRupiah, exportToExcel, exportToCSV, exportToPDF } from '@/utils/exportUtils';
@@ -183,7 +183,8 @@ const Button: React.FC<{
 };
 
 const Finance = () => {
-  const { t } = useTranslation();
+  // Mock translation function
+  const t = (key: string) => key;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState('month');

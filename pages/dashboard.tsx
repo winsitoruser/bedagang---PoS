@@ -1,598 +1,544 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import type { NextPage } from "next";
-import dynamic from "next/dynamic";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 import { 
   FaChartLine, FaBoxOpen, FaShoppingCart, FaUsers, FaMoneyBillWave, 
-  FaCalendarAlt, FaLock, FaSpinner, FaFileInvoiceDollar, FaHandHoldingUsd,
-  FaArrowUp, FaArrowDown, FaSyncAlt, FaEllipsisH, FaBell, FaSearch,
-  FaFilter, FaCog, FaClock, FaBoxes
+  FaArrowUp, FaArrowDown, FaSpinner, FaWarehouse,
+  FaReceipt, FaClock, FaCalendarAlt, FaChartBar, FaChartPie,
+  FaExclamationTriangle, FaBell, FaStar, FaTicketAlt
 } from "react-icons/fa";
-// import { 
-//   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-//   PieChart, Pie, Cell, Legend, BarChart, Bar, LineChart, Line
-// } from 'recharts';
-
-// Import layout and dashboard components
-const FarmanesiaDashboardLayout = dynamic(
-  () => import("@/components/layouts/farmanesia-dashboard-layout"),
-  { ssr: false }
-);
-
-// Import insight cards
-import FinanceInsightCard from "@/components/dashboard/FinanceInsightCard";
-import InventoryInsightCard from "@/components/dashboard/InventoryInsightCard";
-import PurchasingSalesInsightCard from "@/components/dashboard/PurchasingSalesInsightCard";
-import EmployeesScheduleInsightCard from "@/components/dashboard/EmployeesScheduleInsightCard";
-import { useIntegratedDashboardData } from "@/components/dashboard/IntegratedDataService";
+import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { useRolePermissions } from "@/hooks/useRolePermissions";
-import { RolePermissionGate } from "@/components/auth/PermissionGate";
+import Link from "next/link";
 
 const Dashboard: NextPage = () => {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const { hasPermission, userRole } = useRolePermissions();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [showNotifications, setShowNotifications] = useState(false);
-  
-  // Notifications state
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'warning',
-      title: 'Stok Menipis',
-      message: '5 produk memiliki stok di bawah minimum',
-      time: '5 menit yang lalu',
-      unread: true
-    },
-    {
-      id: 2,
-      type: 'info',
-      title: 'Laporan Keuangan',
-      message: 'Laporan keuangan bulan ini sudah tersedia',
-      time: '1 jam yang lalu',
-      unread: true
-    },
-    {
-      id: 3,
-      type: 'success',
-      title: 'Pembayaran Diterima',
-      message: 'Pembayaran dari PT. ABC sebesar Rp 5.000.000 telah diterima',
-      time: '2 jam yang lalu',
-      unread: false
-    },
-    {
-      id: 4,
-      type: 'warning',
-      title: 'Produk Kadaluarsa',
-      message: '3 produk akan kadaluarsa dalam 7 hari',
-      time: '3 jam yang lalu',
-      unread: false
-    },
-    {
-      id: 5,
-      type: 'info',
-      title: 'Jadwal Shift',
-      message: 'Jadwal shift minggu depan telah dipublikasikan',
-      time: '5 jam yang lalu',
-      unread: false
-    }
-  ]);
-  
-  const unreadCount = notifications.filter(n => n.unread).length;
-  
-  // Function to mark all notifications as read
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notification => ({
-        ...notification,
-        unread: false
-      }))
-    );
-  };
-  
-  // Use integrated dashboard data
-  const { data, isLoading, error: dataError } = useIntegratedDashboardData();
-  
-  // Get current date and time for display
-  const [currentDateTime, setCurrentDateTime] = useState(new Date());
-  
-  // Update time every minute
+  const [currentTime, setCurrentTime] = useState(new Date());
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentDateTime(new Date());
-    }, 60000);
-    
-    return () => clearInterval(timer);
-  }, []);
-  
-  const dateOptions: Intl.DateTimeFormatOptions = { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  };
-  
-  const timeOptions: Intl.DateTimeFormatOptions = {
-    hour: '2-digit',
-    minute: '2-digit'
-  };
-
-  // Check authentication and role-based access
-  useEffect(() => {
-    if (status === 'loading') {
-      setLoading(true);
-      return;
-    }
-
-    if (status === 'unauthenticated') {
-      router.push('/auth/login');
-      return;
-    }
-
-    // Check if user has permission to access business intelligence dashboard
-    // Allow ADMIN, OWNER, MANAGER, and PARTNER roles to access this dashboard
-    const allowedRoles = ['ADMIN', 'SUPER_ADMIN', 'OWNER', 'PARTNER', 'MANAGER'];
-    
-    if (session?.user?.role && allowedRoles.includes(session.user.role)) {
-      setLoading(false);
-    } else {
-      // Redirect other roles to their appropriate dashboards
-      switch (session?.user?.role) {
-        case 'PHARMACIST':
-          router.push('/inventory');
-          break;
-        case 'CASHIER':
-          router.push('/pos/kasir');
-          break;
-        case 'DOCTOR':
-        case 'NURSE':
-        case 'CLINICIAN':
-          router.push('/clinic');
-          break;
-        case 'FINANCE_STAFF':
-          router.push('/finance');
-          break;
-        default:
-          router.push('/auth/login');
-          break;
-      }
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
     }
   }, [session, status, router]);
 
-  // Handle manual data refresh
-  const handleRefresh = () => {
-    setRefreshKey(prev => prev + 1);
-  };
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  // Display loading state
-  if (loading) {
+  if (status === "loading") {
     return (
-      <FarmanesiaDashboardLayout>
+      <DashboardLayout>
         <div className="flex items-center justify-center h-screen">
           <div className="text-center">
-            <FaSpinner className="animate-spin h-12 w-12 mx-auto text-red-600" />
+            <FaSpinner className="animate-spin h-12 w-12 mx-auto text-sky-600" />
             <p className="mt-4 text-gray-700">Memuat dashboard...</p>
           </div>
         </div>
-      </FarmanesiaDashboardLayout>
+      </DashboardLayout>
     );
   }
 
+  const stats = [
+    {
+      title: "Total Penjualan Hari Ini",
+      value: "Rp 45.2 Juta",
+      change: "+12.5%",
+      changeText: "vs kemarin",
+      isPositive: true,
+      icon: FaMoneyBillWave,
+      gradient: "from-green-500 to-emerald-600",
+      bgLight: "bg-green-50",
+      textColor: "text-green-600",
+    },
+    {
+      title: "Transaksi Hari Ini",
+      value: "156",
+      change: "+8.2%",
+      changeText: "vs kemarin",
+      isPositive: true,
+      icon: FaShoppingCart,
+      gradient: "from-blue-500 to-blue-600",
+      bgLight: "bg-blue-50",
+      textColor: "text-blue-600",
+    },
+    {
+      title: "Produk Terjual",
+      value: "342",
+      change: "+15.3%",
+      changeText: "vs kemarin",
+      isPositive: true,
+      icon: FaBoxOpen,
+      gradient: "from-purple-500 to-purple-600",
+      bgLight: "bg-purple-50",
+      textColor: "text-purple-600",
+    },
+    {
+      title: "Pelanggan Aktif",
+      value: "1,234",
+      change: "+5.8%",
+      changeText: "bulan ini",
+      isPositive: true,
+      icon: FaUsers,
+      gradient: "from-orange-500 to-orange-600",
+      bgLight: "bg-orange-50",
+      textColor: "text-orange-600",
+    },
+  ];
+
+  const quickStats = [
+    { label: "Rata-rata Transaksi", value: "Rp 289.743", icon: FaReceipt },
+    { label: "Stok Menipis", value: "12 Produk", icon: FaWarehouse, alert: true },
+    { label: "Pending Orders", value: "8", icon: FaClock },
+  ];
+
+  const topProducts = [
+    { name: "Kopi Arabica 250g", sold: 45, revenue: "Rp 2.250.000", trend: "+12%" },
+    { name: "Teh Hijau Premium", sold: 38, revenue: "Rp 1.520.000", trend: "+8%" },
+    { name: "Susu UHT 1L", sold: 32, revenue: "Rp 960.000", trend: "+15%" },
+    { name: "Roti Tawar Gandum", sold: 28, revenue: "Rp 840.000", trend: "+5%" },
+  ];
+
+  const recentTransactions = [
+    { id: "#TRX-001234", time: "10:30", customer: "Ahmad Rizki", amount: "Rp 250.000", status: "success" },
+    { id: "#TRX-001233", time: "10:15", customer: "Siti Nurhaliza", amount: "Rp 180.000", status: "success" },
+    { id: "#TRX-001232", time: "09:45", customer: "Budi Santoso", amount: "Rp 320.000", status: "success" },
+    { id: "#TRX-001231", time: "09:30", customer: "Dewi Lestari", amount: "Rp 150.000", status: "success" },
+  ];
+
+  const alerts = [
+    { type: "warning", message: "12 produk stok menipis", action: "Lihat Detail", link: "/inventory" },
+    { type: "info", message: "8 pesanan menunggu konfirmasi", action: "Proses", link: "/pos/transactions" },
+  ];
+
+  const salesData = [
+    { day: 'Sen', sales: 4200000 },
+    { day: 'Sel', sales: 3800000 },
+    { day: 'Rab', sales: 5100000 },
+    { day: 'Kam', sales: 4500000 },
+    { day: 'Jum', sales: 6200000 },
+    { day: 'Sab', sales: 7800000 },
+    { day: 'Min', sales: 5900000 },
+  ];
+
+  const maxSales = Math.max(...salesData.map(d => d.sales));
+
+  const categoryData = [
+    { name: 'Makanan', value: 35, color: 'bg-blue-500' },
+    { name: 'Minuman', value: 25, color: 'bg-green-500' },
+    { name: 'Snack', value: 20, color: 'bg-purple-500' },
+    { name: 'Lainnya', value: 20, color: 'bg-orange-500' },
+  ];
+
   return (
-    <FarmanesiaDashboardLayout>
+    <DashboardLayout>
       <Head>
-        <title>Business Intelligence Dashboard | FARMANESIA-EVO</title>
+        <title>Dashboard | BEDAGANG Cloud POS</title>
       </Head>
-      
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #fee2e2;
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: linear-gradient(to bottom, #ef4444, #f97316);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(to bottom, #dc2626, #ea580c);
-        }
-      `}</style>
-      
-      {/* Decorative background elements */}
-      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
-        <div className="absolute -top-20 -right-20 w-96 h-96 rounded-full bg-gradient-to-br from-red-500/10 to-orange-400/5 blur-xl"></div>
-        <div className="absolute top-1/3 -left-40 w-80 h-80 rounded-full bg-gradient-to-tr from-orange-400/10 to-red-500/5 blur-xl"></div>
-        <div className="absolute -bottom-40 right-1/4 w-96 h-96 rounded-full bg-gradient-to-tl from-orange-400/5 to-red-500/10 blur-xl"></div>
-      </div>
-      
-      <div className="container mx-auto px-4 py-6 space-y-6 mb-24">
-        {/* Header Section */}
-        <Card className="border-red-100 bg-white shadow-sm overflow-hidden relative">
-          {/* Ornamen Farmanesia */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-600/10 to-orange-500/10 rounded-bl-full z-0 animate-ping opacity-75"></div>
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-orange-500/10 to-red-600/10 rounded-tr-full z-0 hover:animate-spin transition-all duration-1000"></div>
-          <div className="absolute top-3 right-3">
-            <div className="text-xs font-bold bg-gradient-to-r from-red-600 to-orange-500 text-transparent bg-clip-text animate-bounce">FARMANESIA</div>
-          </div>
-          
-          <div className="absolute top-0 left-6 h-1 w-16 bg-gradient-to-r from-red-600 to-orange-500 motion-safe:animate-[shimmer_2s_ease-in-out_infinite]"></div>
-          <div className="absolute bottom-0 right-6 h-1 w-16 bg-gradient-to-r from-orange-500 to-red-600 motion-safe:animate-[shimmer_2s_ease-in-out_infinite_alternate]"></div>
-          
-          <CardContent className="py-6 relative z-10">
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
+
+      <div className="space-y-6">
+        {/* Welcome Section with Time */}
+        <div className="bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-600 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <div className="flex items-center">
-                  <div className="mr-3 h-8 w-8 rounded-full bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center hover:scale-110 transition-transform duration-300">
-                    <FaChartLine className="text-white text-sm animate-bounce" />
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-orange-500 text-transparent bg-clip-text hover:scale-105 transition-transform duration-500">
-                      Business Intelligence Dashboard
-                    </h1>
-                    <div className="flex items-center mt-1">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-red-100 to-orange-100 text-red-800 border border-red-200">
-                        <FaLock className="mr-1 h-3 w-3" />
-                        {userRole} Access
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-gray-600 mt-1 ml-11">
-                  Analisis komprehensif terintegrasi dari seluruh modul - Akses khusus untuk Admin/Owner
+                <h1 className="text-3xl font-bold mb-2">
+                  Selamat Datang, {session?.user?.name || 'User'}! 👋
+                </h1>
+                <p className="text-blue-100 text-lg">
+                  Berikut adalah ringkasan bisnis Anda hari ini
                 </p>
               </div>
-              
-              <div className="flex flex-col md:items-end space-y-1">
-                <div className="flex items-center text-gray-600">
-                  <FaCalendarAlt className="mr-2 text-red-500" />
-                  {currentDateTime.toLocaleDateString('id-ID', dateOptions)}
+              <div className="text-right">
+                <div className="text-2xl font-bold">
+                  {currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                 </div>
-                <div className="flex items-center text-gray-600">
-                  <FaClock className="mr-2 text-red-500 motion-safe:animate-[spin_10s_linear_infinite]" />
-                  {currentDateTime.toLocaleTimeString('id-ID', timeOptions)}
+                <div className="text-blue-100 text-sm">
+                  {currentTime.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </div>
               </div>
             </div>
             
-            {/* Action Buttons */}
-            <div className="flex justify-between items-center mt-4">
-              <div className="space-x-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="border-red-100 hover:bg-red-50 hover:text-red-600 transition-all duration-300 transform hover:scale-105"
-                  onClick={handleRefresh}
-                >
-                  <FaSyncAlt className="mr-2 h-3 w-3 hover:animate-spin" />
-                  Refresh Data
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="border-red-100 hover:bg-red-50 hover:text-red-600 transition-all duration-300 transform hover:scale-105"
-                >
-                  <FaFilter className="mr-2 h-3 w-3" />
-                  Filter
-                </Button>
-              </div>
-              
-              <div className="flex space-x-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="hover:bg-red-50 hover:text-red-600 hover:rotate-12 transition-all duration-300"
-                >
-                  <FaCog className="h-4 w-4" />
-                </Button>
-                
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="hover:bg-red-50 hover:text-red-600 relative transition-all duration-300"
-                  onClick={() => setShowNotifications(true)}
-                >
-                  <FaBell className="h-4 w-4" />
-                  {unreadCount > 0 && (
-                    <>
-                      <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full animate-ping"></span>
-                      <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold">
-                        {unreadCount}
-                      </span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Status Info */}
-        {(error || dataError) && (
-          <Card className="border-amber-200 bg-amber-50">
-            <CardContent className="py-3 text-amber-800 text-sm flex items-center">
-              <FaBell className="mr-2" />
-              {error || dataError} Data terakhir diperbarui pada {new Date().toLocaleTimeString('id-ID')}
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* Main Dashboard Content */}
-        <div className="min-h-[500px]">
-          {isLoading && !data ? (
-            <div className="space-y-6 animate-pulse">
-              <div className="h-20 bg-gray-200 rounded"></div>
-              <div className="h-96 bg-gray-100 rounded"></div>
-              <div className="h-96 bg-gray-100 rounded"></div>
-            </div>
-          ) : data && Object.values(data).some(val => val !== null) ? (
-            <div className="space-y-6">
-              <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-1 md:grid-cols-4 mb-6">
-                  <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-orange-500 data-[state=active]:text-white">
-                    Ringkasan
-                  </TabsTrigger>
-                  <TabsTrigger value="finance-inventory" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-orange-500 data-[state=active]:text-white">
-                    Keuangan & Inventori
-                  </TabsTrigger>
-                  <TabsTrigger value="sales-purchasing" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-orange-500 data-[state=active]:text-white">
-                    Penjualan & Pembelian
-                  </TabsTrigger>
-                  <TabsTrigger value="employees-schedule" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-orange-500 data-[state=active]:text-white">
-                    Karyawan & Jadwal
-                  </TabsTrigger>
-                </TabsList>
-                
-                {/* Overview Tab - Shows summary cards for all areas */}
-                <TabsContent value="overview" className="space-y-6">
-                  {/* Metric Summary - 4 key metrics */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Card className="border-red-100 shadow-sm">
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="text-sm text-gray-600 mb-1">Total Penjualan</div>
-                            <div className="text-xl font-bold text-red-700">
-                              {new Intl.NumberFormat('id-ID', {
-                                style: 'currency',
-                                currency: 'IDR',
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 0
-                              }).format(data.sales.totalSales)}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">{data.sales.salesCount.toLocaleString()} transaksi</div>
-                          </div>
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500/10 to-orange-500/10 flex items-center justify-center">
-                            <FaShoppingCart className="text-red-600" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card className="border-red-100 shadow-sm">
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="text-sm text-gray-600 mb-1">Nilai Inventori</div>
-                            <div className="text-xl font-bold text-red-700">
-                              {new Intl.NumberFormat('id-ID', {
-                                style: 'currency',
-                                currency: 'IDR',
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 0
-                              }).format(data.inventory.totalValue)}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">{data.inventory.totalItems.toLocaleString()} item</div>
-                          </div>
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500/10 to-orange-500/10 flex items-center justify-center">
-                            <FaBoxes className="text-red-600" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card className="border-red-100 shadow-sm">
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="text-sm text-gray-600 mb-1">Profit</div>
-                            <div className="text-xl font-bold text-red-700">
-                              {new Intl.NumberFormat('id-ID', {
-                                style: 'currency',
-                                currency: 'IDR',
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 0
-                              }).format(data.finance.profit)}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">Margin: {((data.finance.profit / data.finance.totalRevenue) * 100).toFixed(1)}%</div>
-                          </div>
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500/10 to-orange-500/10 flex items-center justify-center">
-                            <FaMoneyBillWave className="text-red-600" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card className="border-red-100 shadow-sm">
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="text-sm text-gray-600 mb-1">Karyawan & Jadwal</div>
-                            <div className="text-xl font-bold text-red-700">
-                              {data.employees.totalEmployees}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">{data.schedule.todayAppointments} jadwal hari ini</div>
-                          </div>
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500/10 to-orange-500/10 flex items-center justify-center">
-                            <FaUsers className="text-red-600" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  
-                  {/* Snapshot of All Modules */}
-                  <FinanceInsightCard financeData={data.finance} isLoading={false} />
-                  <InventoryInsightCard inventoryData={data.inventory} isLoading={false} />
-                  <PurchasingSalesInsightCard 
-                    purchasingData={data.purchasing}
-                    salesData={data.sales}
-                    isLoading={false}
-                  />
-                  <EmployeesScheduleInsightCard
-                    employeesData={data.employees}
-                    scheduleData={data.schedule}
-                    isLoading={false}
-                  />
-                </TabsContent>
-                
-                {/* Finance & Inventory Tab */}
-                <TabsContent value="finance-inventory" className="space-y-6">
-                  <FinanceInsightCard financeData={data.finance} isLoading={false} />
-                  <InventoryInsightCard inventoryData={data.inventory} isLoading={false} />
-                </TabsContent>
-                
-                {/* Sales & Purchasing Tab */}
-                <TabsContent value="sales-purchasing" className="space-y-6">
-                  <PurchasingSalesInsightCard 
-                    purchasingData={data.purchasing}
-                    salesData={data.sales}
-                    isLoading={false}
-                  />
-                </TabsContent>
-                
-                {/* Employees & Schedule Tab */}
-                <TabsContent value="employees-schedule" className="space-y-6">
-                  <EmployeesScheduleInsightCard
-                    employeesData={data.employees}
-                    scheduleData={data.schedule}
-                    isLoading={false}
-                  />
-                </TabsContent>
-              </Tabs>
-            </div>
-          ) : (
-            <Card className="border-red-100 shadow-sm">
-              <CardContent className="p-8 text-center">
-                <div className="text-xl font-medium text-gray-700 mb-2">
-                  {dataError ? "Tidak dapat memuat data dashboard" : "Data masih belum ada"}
-                </div>
-                <p className="text-gray-600 mb-4">
-                  {dataError 
-                    ? "Terjadi kesalahan saat mengambil data. Silakan coba lagi nanti." 
-                    : "Belum ada data yang tersedia untuk ditampilkan pada dashboard. Silakan tambahkan data terlebih dahulu."}
-                </p>
-                <Button
-                  onClick={handleRefresh}
-                  className="bg-gradient-to-r from-red-600 to-orange-500 text-white"
-                >
-                  <FaSyncAlt className="mr-2" /> {dataError ? "Coba Lagi" : "Refresh"}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-      
-      {/* Notification Dialog */}
-      <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold flex items-center gap-2">
-              <FaBell className="text-red-500" />
-              Notifikasi
-            </DialogTitle>
-            <DialogDescription>
-              {unreadCount > 0 ? `Anda memiliki ${unreadCount} notifikasi yang belum dibaca` : 'Semua notifikasi sudah dibaca'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-3 overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
-            {notifications.map((notification) => (
-              <Card 
-                key={notification.id} 
-                className={`border transition-all hover:shadow-md cursor-pointer ${
-                  notification.unread 
-                    ? 'bg-red-50 border-red-200' 
-                    : 'bg-white border-gray-200'
-                }`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge 
-                          variant="outline"
-                          className={`${
-                            notification.type === 'warning' 
-                              ? 'bg-amber-100 text-amber-800 border-amber-300'
-                              : notification.type === 'success'
-                              ? 'bg-green-100 text-green-800 border-green-300'
-                              : 'bg-blue-100 text-blue-800 border-blue-300'
-                          }`}
-                        >
-                          {notification.type === 'warning' ? '⚠️' : notification.type === 'success' ? '✅' : 'ℹ️'}
-                        </Badge>
-                        <h4 className="font-semibold text-gray-900">{notification.title}</h4>
-                        {notification.unread && (
-                          <span className="h-2 w-2 bg-red-500 rounded-full"></span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <FaClock className="mr-1" />
-                        {notification.time}
+            {/* Quick Stats Bar */}
+            <div className="grid grid-cols-3 gap-4 mt-6">
+              {quickStats.map((stat, idx) => {
+                const Icon = stat.icon;
+                return (
+                  <div key={idx} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                    <div className="flex items-center space-x-3">
+                      <Icon className="w-5 h-5" />
+                      <div>
+                        <p className="text-xs text-blue-100">{stat.label}</p>
+                        <p className="text-lg font-bold flex items-center space-x-2">
+                          <span>{stat.value}</span>
+                          {stat.alert && <FaExclamationTriangle className="w-4 h-4 text-yellow-300" />}
+                        </p>
                       </div>
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Grid - Enhanced */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`bg-gradient-to-br ${stat.gradient} w-14 h-14 rounded-xl flex items-center justify-center shadow-lg`}>
+                      <Icon className="w-7 h-7 text-white" />
+                    </div>
+                    <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${
+                      stat.isPositive ? 'bg-green-100' : 'bg-red-100'
+                    }`}>
+                      {stat.isPositive ? (
+                        <FaArrowUp className={`w-3 h-3 ${
+                          stat.isPositive ? 'text-green-600' : 'text-red-600'
+                        }`} />
+                      ) : (
+                        <FaArrowDown className={`w-3 h-3 ${
+                          stat.isPositive ? 'text-green-600' : 'text-red-600'
+                        }`} />
+                      )}
+                      <span className={`text-xs font-bold ${
+                        stat.isPositive ? 'text-green-600' : 'text-red-600'
+                      }`}>{stat.change}</span>
+                    </div>
+                  </div>
+                  <h3 className="text-gray-500 text-sm font-medium mb-2">{stat.title}</h3>
+                  <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
+                  <p className="text-xs text-gray-400">{stat.changeText}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Alerts Section */}
+        {alerts.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {alerts.map((alert, idx) => (
+              <Card key={idx} className={`border-l-4 ${
+                alert.type === 'warning' ? 'border-yellow-500 bg-yellow-50' : 'border-blue-500 bg-blue-50'
+              }`}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <FaBell className={`w-5 h-5 ${
+                        alert.type === 'warning' ? 'text-yellow-600' : 'text-blue-600'
+                      }`} />
+                      <p className="font-medium text-gray-900">{alert.message}</p>
+                    </div>
+                    <Link href={alert.link}>
+                      <button className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                        alert.type === 'warning' 
+                          ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      } transition-colors`}>
+                        {alert.action}
+                      </button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>
             ))}
-            
-            {notifications.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <FaBell className="mx-auto h-12 w-12 mb-3 text-gray-300" />
-                <p>Tidak ada notifikasi</p>
+          </div>
+        )}
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Sales Chart */}
+          <Card className="lg:col-span-2 shadow-lg">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FaChartBar className="w-5 h-5 text-blue-600" />
+                    <span>Penjualan 7 Hari Terakhir</span>
+                  </CardTitle>
+                  <CardDescription>Grafik penjualan harian minggu ini</CardDescription>
+                </div>
+                <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option>7 Hari</option>
+                  <option>30 Hari</option>
+                  <option>90 Hari</option>
+                </select>
               </div>
-            )}
-          </div>
-          
-          <div className="flex justify-between items-center pt-4 border-t">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-red-600 hover:bg-red-50"
-              onClick={() => setShowNotifications(false)}
-            >
-              Tutup
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-red-200 text-red-600 hover:bg-red-50"
-              onClick={markAllAsRead}
-              disabled={unreadCount === 0}
-            >
-              Tandai Semua Sudah Dibaca
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </FarmanesiaDashboardLayout>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {salesData.map((data, idx) => (
+                  <div key={idx} className="flex items-center space-x-4">
+                    <div className="w-12 text-sm font-medium text-gray-600">{data.day}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-1 bg-gray-100 rounded-full h-8 relative overflow-hidden">
+                          <div 
+                            className="bg-gradient-to-r from-blue-500 to-blue-600 h-full rounded-full flex items-center justify-end pr-3 transition-all duration-500"
+                            style={{ width: `${(data.sales / maxSales) * 100}%` }}
+                          >
+                            <span className="text-white text-xs font-bold">
+                              {(data.sales / 1000000).toFixed(1)}M
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-28 text-right">
+                          <p className="text-sm font-bold text-gray-900">
+                            Rp {(data.sales / 1000000).toFixed(1)} Jt
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Total Minggu Ini</p>
+                    <p className="text-2xl font-bold text-gray-900">Rp 37.5 Jt</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-500">Rata-rata/Hari</p>
+                    <p className="text-2xl font-bold text-green-600">Rp 5.4 Jt</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Category Distribution */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <FaChartPie className="w-5 h-5 text-purple-600" />
+                <span>Kategori Produk</span>
+              </CardTitle>
+              <CardDescription>Distribusi penjualan per kategori</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {categoryData.map((cat, idx) => (
+                  <div key={idx}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 rounded-full ${cat.color}`}></div>
+                        <span className="text-sm font-medium text-gray-700">{cat.name}</span>
+                      </div>
+                      <span className="text-sm font-bold text-gray-900">{cat.value}%</span>
+                    </div>
+                    <Progress value={cat.value} className="h-2" />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Top Kategori</p>
+                    <p className="text-lg font-bold text-blue-600">Makanan</p>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Pertumbuhan</p>
+                    <p className="text-lg font-bold text-green-600">+12%</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Top Products & Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Top Products */}
+          <Card className="lg:col-span-2 shadow-lg">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FaChartLine className="w-5 h-5 text-green-600" />
+                    <span>Produk Terlaris Hari Ini</span>
+                  </CardTitle>
+                  <CardDescription>Top 4 produk dengan penjualan tertinggi</CardDescription>
+                </div>
+                <Link href="/reports">
+                  <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    Lihat Semua →
+                  </button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {topProducts.map((product, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg text-white font-bold">
+                        {idx + 1}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{product.name}</p>
+                        <p className="text-sm text-gray-500">{product.sold} terjual</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-900">{product.revenue}</p>
+                      <p className="text-sm text-green-600 font-medium">{product.trend}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions - Enhanced */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle>Aksi Cepat</CardTitle>
+              <CardDescription>Shortcut untuk fitur utama</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                <Link href="/pos/cashier">
+                  <div className="group relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative z-10">
+                      <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mb-3">
+                        <FaShoppingCart className="w-6 h-6 text-white" />
+                      </div>
+                      <p className="text-white font-semibold text-sm">Buat</p>
+                      <p className="text-white font-semibold text-sm">Transaksi</p>
+                    </div>
+                  </div>
+                </Link>
+
+                <Link href="/inventory">
+                  <div className="group relative overflow-hidden bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative z-10">
+                      <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mb-3">
+                        <FaBoxOpen className="w-6 h-6 text-white" />
+                      </div>
+                      <p className="text-white font-semibold text-sm">Kelola</p>
+                      <p className="text-white font-semibold text-sm">Stok</p>
+                    </div>
+                  </div>
+                </Link>
+
+                <Link href="/reports">
+                  <div className="group relative overflow-hidden bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative z-10">
+                      <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mb-3">
+                        <FaChartLine className="w-6 h-6 text-white" />
+                      </div>
+                      <p className="text-white font-semibold text-sm">Lihat</p>
+                      <p className="text-white font-semibold text-sm">Laporan</p>
+                    </div>
+                  </div>
+                </Link>
+
+                <Link href="/customers">
+                  <div className="group relative overflow-hidden bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative z-10">
+                      <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mb-3">
+                        <FaUsers className="w-6 h-6 text-white" />
+                      </div>
+                      <p className="text-white font-semibold text-sm">Data</p>
+                      <p className="text-white font-semibold text-sm">Pelanggan</p>
+                    </div>
+                  </div>
+                </Link>
+
+                <Link href="/promo-voucher">
+                  <div className="group relative overflow-hidden bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative z-10">
+                      <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mb-3">
+                        <FaTicketAlt className="w-6 h-6 text-white" />
+                      </div>
+                      <p className="text-white font-semibold text-sm">Promo &</p>
+                      <p className="text-white font-semibold text-sm">Voucher</p>
+                    </div>
+                  </div>
+                </Link>
+
+                <Link href="/loyalty-program">
+                  <div className="group relative overflow-hidden bg-gradient-to-br from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative z-10">
+                      <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mb-3">
+                        <FaStar className="w-6 h-6 text-white" />
+                      </div>
+                      <p className="text-white font-semibold text-sm">Loyalty</p>
+                      <p className="text-white font-semibold text-sm">Program</p>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Transactions */}
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center space-x-2">
+                  <FaReceipt className="w-5 h-5 text-blue-600" />
+                  <span>Transaksi Terbaru</span>
+                </CardTitle>
+                <CardDescription>4 transaksi terakhir hari ini</CardDescription>
+              </div>
+              <Link href="/pos/transactions">
+                <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                  Lihat Semua →
+                </button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentTransactions.map((trx, idx) => (
+                <div key={idx} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
+                      <FaShoppingCart className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{trx.id}</p>
+                      <p className="text-sm text-gray-500">{trx.customer}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-gray-900">{trx.amount}</p>
+                    <div className="flex items-center space-x-2">
+                      <p className="text-xs text-gray-500">{trx.time}</p>
+                      <Badge variant="default" className="bg-green-100 text-green-700 hover:bg-green-100">
+                        Sukses
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
   );
 };
 
