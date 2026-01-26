@@ -18,6 +18,32 @@ export default async function handler(req, res) {
   });
 
   try {
+    // Check if table exists first
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'inventory_transfers'
+      )
+    `);
+
+    if (!tableCheck.rows[0].exists) {
+      await pool.end();
+      return res.status(200).json({
+        success: true,
+        data: {
+          total_transfers: 0,
+          by_status: {},
+          by_priority: {},
+          total_value: 0,
+          avg_value: 0,
+          recent_count: 0,
+          avg_transfer_days: '0.0',
+          success_rate: 0
+        }
+      });
+    }
+
     // Total transfers
     const totalResult = await pool.query(
       'SELECT COUNT(*) as total FROM inventory_transfers'

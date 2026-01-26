@@ -32,6 +32,29 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
+      // Check if table exists first
+      const tableCheck = await pool.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'inventory_transfers'
+        )
+      `);
+
+      if (!tableCheck.rows[0].exists) {
+        await pool.end();
+        return res.status(200).json({
+          success: true,
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            total_pages: 0
+          }
+        });
+      }
+
       // List transfers with pagination and filters
       const {
         page = 1,
