@@ -131,9 +131,77 @@ export default async function handler(req, res) {
       ]
     );
 
-    // TODO: Add stock to destination location
-    // This would integrate with inventory management system
-    // Create stock movement records (type: transfer_in)
+    // Add stock to destination location and create stock movements
+    for (const item of items) {
+      const quantityToAdd = parseFloat(item.quantity_received) || 0;
+      
+      if (quantityToAdd > 0 && (item.condition === 'good' || !item.condition)) {
+        // Check if inventory_stock table exists and update stock
+        const stockCheckResult = await pool.query(
+          `SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'inventory_stock'
+          )`
+        );
+
+        if (stockCheckResult.rows[0].exists) {
+          // Check if stock record exists for this product and location
+          const existingStock = await pool.query(
+            `SELECT id FROM inventory_stock 
+             WHERE product_id = $1 AND location_id = $2`,
+            [item.product_id, transfer.to_location_id]
+          );
+
+          if (existingStock.rows.length > 0) {
+            // Update existing stock
+            await pool.query(
+              `UPDATE inventory_stock
+               SET quantity = quantity + $1,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE product_id = $2 AND location_id = $3`,
+              [quantityToAdd, item.product_id, transfer.to_location_id]
+            );
+          } else {
+            // Insert new stock record
+            await pool.query(
+              `INSERT INTO inventory_stock (
+                product_id, location_id, quantity, created_at, updated_at
+              ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+              [item.product_id, transfer.to_location_id, quantityToAdd]
+            );
+          }
+        }
+
+        // Create stock movement record if table exists
+        const movementCheckResult = await pool.query(
+          `SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'stock_movements'
+          )`
+        );
+
+        if (movementCheckResult.rows[0].exists) {
+          await pool.query(
+            `INSERT INTO stock_movements (
+              product_id, location_id, movement_type, quantity,
+              reference_type, reference_id, notes, created_by, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)`,
+            [
+              item.product_id,
+              transfer.to_location_id,
+              'transfer_in',
+              quantityToAdd,
+              'transfer',
+              id,
+              `Transfer ${transfer.transfer_number} from location ${transfer.from_location_id}`,
+              session.user.email || session.user.name
+            ]
+          );
+        }
+      }
+    }
 
     await pool.end();
 

@@ -42,8 +42,59 @@ export default async function handler(req, res) {
       });
     }
 
-    // TODO: Check stock availability at source location
-    // This would integrate with inventory management system
+    // Check stock availability at source location
+    const itemsToCheck = await pool.query(
+      'SELECT * FROM inventory_transfer_items WHERE transfer_id = $1',
+      [id]
+    );
+
+    // Check if inventory_stock table exists
+    const stockTableExists = await pool.query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'inventory_stock'
+      )`
+    );
+
+    if (stockTableExists.rows[0].exists) {
+      // Verify stock availability for each item
+      for (const item of itemsToCheck.rows) {
+        const stockCheck = await pool.query(
+          `SELECT 
+            COALESCE(quantity, 0) as available,
+            COALESCE(minimum_stock, 0) as minimum_stock,
+            (SELECT COALESCE(SUM(quantity_requested), 0) 
+             FROM inventory_transfer_items iti
+             JOIN inventory_transfers it ON iti.transfer_id = it.id
+             WHERE iti.product_id = $1 
+             AND it.from_location_id = $2
+             AND it.status IN ('requested', 'approved', 'in_preparation')
+             AND it.id != $3
+            ) as reserved
+          FROM inventory_stock
+          WHERE product_id = $1 AND location_id = $2`,
+          [item.product_id, transfer.from_location_id, id]
+        );
+
+        if (stockCheck.rows.length > 0) {
+          const { available, minimum_stock, reserved } = stockCheck.rows[0];
+          const transferable = available - minimum_stock - reserved;
+          
+          if (item.quantity_requested > transferable) {
+            await pool.end();
+            return res.status(400).json({
+              error: 'Insufficient stock',
+              message: `Product ${item.product_name} has insufficient stock. Available: ${transferable}, Requested: ${item.quantity_requested}`,
+              product_id: item.product_id,
+              product_name: item.product_name,
+              available: transferable,
+              requested: item.quantity_requested
+            });
+          }
+        }
+      }
+    }
 
     // Update transfer
     const updateResult = await pool.query(

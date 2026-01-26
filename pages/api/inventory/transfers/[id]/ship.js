@@ -104,9 +104,65 @@ export default async function handler(req, res) {
       ]
     );
 
-    // TODO: Deduct stock from source location
-    // This would integrate with inventory management system
-    // Create stock movement records (type: transfer_out)
+    // Deduct stock from source location and create stock movements
+    const itemsResult = await pool.query(
+      'SELECT * FROM inventory_transfer_items WHERE transfer_id = $1',
+      [id]
+    );
+
+    for (const item of itemsResult.rows) {
+      const quantityToDeduct = item.quantity_shipped || item.quantity_approved || 0;
+      
+      if (quantityToDeduct > 0) {
+        // Check if inventory_stock table exists and update stock
+        const stockCheckResult = await pool.query(
+          `SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'inventory_stock'
+          )`
+        );
+
+        if (stockCheckResult.rows[0].exists) {
+          // Update inventory stock - deduct from source location
+          await pool.query(
+            `UPDATE inventory_stock
+             SET quantity = quantity - $1,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE product_id = $2 AND location_id = $3`,
+            [quantityToDeduct, item.product_id, transfer.from_location_id]
+          );
+        }
+
+        // Create stock movement record if table exists
+        const movementCheckResult = await pool.query(
+          `SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'stock_movements'
+          )`
+        );
+
+        if (movementCheckResult.rows[0].exists) {
+          await pool.query(
+            `INSERT INTO stock_movements (
+              product_id, location_id, movement_type, quantity,
+              reference_type, reference_id, notes, created_by, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)`,
+            [
+              item.product_id,
+              transfer.from_location_id,
+              'transfer_out',
+              -quantityToDeduct,
+              'transfer',
+              id,
+              `Transfer ${transfer.transfer_number} to location ${transfer.to_location_id}`,
+              session.user.email || session.user.name
+            ]
+          );
+        }
+      }
+    }
 
     await pool.end();
 
