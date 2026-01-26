@@ -1,8 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]';
-import { sequelize } from '../../../server/sequelize/connection-simple';
-import InventoryReportsAdapter from '../../../server/sequelize/adapters/inventory-reports-adapter';
+import { Pool } from 'pg';
+import InventoryReportsQueries from '../../../lib/database/inventory-reports-queries';
 import { createLogger } from '../../../lib/logger-factory';
 
 const logger = createLogger('inventory-reports-api');
@@ -236,8 +236,12 @@ async function handleGetReports(req: NextApiRequest, res: NextApiResponse) {
 
     operationLogger.info('Processing report request', { reportType, period, branch });
 
-    // Initialize database adapter
-    const reportsAdapter = new InventoryReportsAdapter(sequelize);
+    // Initialize database connection
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+    });
+    
+    const reportsQueries = new InventoryReportsQueries(pool);
     
     // Set timeout for database operations
     const controller = new AbortController();
@@ -249,7 +253,7 @@ async function handleGetReports(req: NextApiRequest, res: NextApiResponse) {
     try {
       switch (reportType) {
         case 'stock-value':
-          responseData = await reportsAdapter.getStockValueReport({
+          responseData = await reportsQueries.getStockValueReport({
             branch: branch as string,
             period: period as string,
             dateFrom: dateFrom as string,
@@ -261,7 +265,7 @@ async function handleGetReports(req: NextApiRequest, res: NextApiResponse) {
           const pageNum = parseInt(page as string);
           const limitNum = parseInt(limit as string);
           
-          responseData = await reportsAdapter.getStockMovementReport({
+          responseData = await reportsQueries.getStockMovementReport({
             branch: branch as string,
             period: period as string,
             dateFrom: dateFrom as string,
@@ -272,19 +276,20 @@ async function handleGetReports(req: NextApiRequest, res: NextApiResponse) {
           break;
 
         case 'low-stock':
-          responseData = await reportsAdapter.getLowStockReport({
+          responseData = await reportsQueries.getLowStockReport({
             branch: branch as string
           });
           break;
 
         case 'product-analysis':
-          responseData = await reportsAdapter.getProductAnalysisReport({
+          responseData = await reportsQueries.getProductAnalysisReport({
             branch: branch as string,
             period: period as string
           });
           break;
 
         default:
+          await pool.end();
           return res.status(400).json({
             success: false,
             message: 'Invalid report type'
@@ -292,10 +297,12 @@ async function handleGetReports(req: NextApiRequest, res: NextApiResponse) {
       }
       
       clearTimeout(timeoutId);
+      await pool.end();
       operationLogger.info('Database report generated successfully', { reportType });
       
     } catch (dbError) {
       clearTimeout(timeoutId);
+      await pool.end();
       operationLogger.warn('Database operation failed, falling back to mock data', { 
         error: (dbError as Error).message 
       });
