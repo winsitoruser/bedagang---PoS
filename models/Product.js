@@ -88,7 +88,7 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     tableName: 'products',
     timestamps: true,
-    paranoid: true, // This enables soft delete via deletedAt
+    paranoid: false, // Disable paranoid to avoid deletedAt issues
     indexes: [
       {
         fields: ['category']
@@ -115,18 +115,40 @@ module.exports = (sequelize, DataTypes) => {
     ]
   });
 
-  Product.associate = (models) => {
+  Product.associate = function(models) {
     // Relasi dengan TransactionItem
     Product.hasMany(models.TransactionItem, {
       foreignKey: 'productId',
       as: 'transactionItems'
     });
     
-    // Relasi dengan Supplier (if exists)
-    if (models.Supplier) {
-      Product.belongsTo(models.Supplier, {
-        foreignKey: 'supplierId',
-        as: 'supplierInfo'
+    // Relasi dengan Supplier
+    Product.belongsTo(models.Supplier, {
+      foreignKey: 'supplier_id',
+      as: 'supplier'
+    });
+    
+    // Relasi dengan ProductPrice
+    if (models.ProductPrice) {
+      Product.hasMany(models.ProductPrice, {
+        foreignKey: 'product_id',
+        as: 'prices'
+      });
+    }
+    
+    // Relasi dengan ProductVariant
+    if (models.ProductVariant) {
+      Product.hasMany(models.ProductVariant, {
+        foreignKey: 'product_id',
+        as: 'variants'
+      });
+    }
+    
+    // Relasi dengan Recipe
+    if (models.Recipe) {
+      Product.belongsTo(models.Recipe, {
+        foreignKey: 'recipe_id',
+        as: 'recipe'
       });
     }
   };

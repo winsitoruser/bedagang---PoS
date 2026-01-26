@@ -19,6 +19,7 @@ const Dashboard: NextPage = () => {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [salesPeriod, setSalesPeriod] = useState<'today' | 'week' | 'month'>('today');
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -117,16 +118,17 @@ const Dashboard: NextPage = () => {
   ];
 
   const salesData = [
-    { day: 'Sen', sales: 4200000 },
-    { day: 'Sel', sales: 3800000 },
-    { day: 'Rab', sales: 5100000 },
-    { day: 'Kam', sales: 4500000 },
-    { day: 'Jum', sales: 6200000 },
-    { day: 'Sab', sales: 7800000 },
-    { day: 'Min', sales: 5900000 },
+    { cashier: 'Ahmad Rizki', sales: 7800000, transactions: 45, color: 'from-blue-500 to-blue-600' },
+    { cashier: 'Siti Nurhaliza', sales: 6200000, transactions: 38, color: 'from-green-500 to-green-600' },
+    { cashier: 'Budi Santoso', sales: 5100000, transactions: 32, color: 'from-purple-500 to-purple-600' },
+    { cashier: 'Dewi Lestari', sales: 4500000, transactions: 28, color: 'from-orange-500 to-orange-600' },
+    { cashier: 'Eko Prasetyo', sales: 4200000, transactions: 25, color: 'from-pink-500 to-pink-600' },
+    { cashier: 'Fitri Handayani', sales: 3800000, transactions: 22, color: 'from-yellow-500 to-yellow-600' },
   ];
 
   const maxSales = Math.max(...salesData.map(d => d.sales));
+  const totalSalesCashier = salesData.reduce((sum, d) => sum + d.sales, 0);
+  const totalTransactionsCashier = salesData.reduce((sum, d) => sum + d.transactions, 0);
 
   const categoryData = [
     { name: 'Makanan', value: 35, color: 'bg-blue-500' },
@@ -266,27 +268,41 @@ const Dashboard: NextPage = () => {
                 <div>
                   <CardTitle className="flex items-center space-x-2">
                     <FaChartBar className="w-5 h-5 text-blue-600" />
-                    <span>Penjualan 7 Hari Terakhir</span>
+                    <span>Penjualan Per Kasir</span>
                   </CardTitle>
-                  <CardDescription>Grafik penjualan harian minggu ini</CardDescription>
+                  <CardDescription>
+                    Performa penjualan masing-masing kasir {salesPeriod === 'today' ? 'hari ini' : salesPeriod === 'week' ? 'minggu ini' : 'bulan ini'}
+                  </CardDescription>
                 </div>
-                <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>7 Hari</option>
-                  <option>30 Hari</option>
-                  <option>90 Hari</option>
+                <select 
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={salesPeriod}
+                  onChange={(e) => setSalesPeriod(e.target.value as 'today' | 'week' | 'month')}
+                >
+                  <option value="today">Hari Ini</option>
+                  <option value="week">Minggu Ini</option>
+                  <option value="month">Bulan Ini</option>
                 </select>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {salesData.map((data, idx) => (
                   <div key={idx} className="flex items-center space-x-4">
-                    <div className="w-12 text-sm font-medium text-gray-600">{data.day}</div>
+                    <div className="flex items-center space-x-3 w-48">
+                      <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg font-bold text-gray-700">
+                        #{idx + 1}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{data.cashier}</p>
+                        <p className="text-xs text-gray-500">{data.transactions} transaksi</p>
+                      </div>
+                    </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-3">
-                        <div className="flex-1 bg-gray-100 rounded-full h-8 relative overflow-hidden">
+                        <div className="flex-1 bg-gray-100 rounded-full h-10 relative overflow-hidden">
                           <div 
-                            className="bg-gradient-to-r from-blue-500 to-blue-600 h-full rounded-full flex items-center justify-end pr-3 transition-all duration-500"
+                            className={`bg-gradient-to-r ${data.color} h-full rounded-full flex items-center justify-end pr-3 transition-all duration-500 shadow-md`}
                             style={{ width: `${(data.sales / maxSales) * 100}%` }}
                           >
                             <span className="text-white text-xs font-bold">
@@ -294,9 +310,12 @@ const Dashboard: NextPage = () => {
                             </span>
                           </div>
                         </div>
-                        <div className="w-28 text-right">
+                        <div className="w-32 text-right">
                           <p className="text-sm font-bold text-gray-900">
                             Rp {(data.sales / 1000000).toFixed(1)} Jt
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {((data.sales / totalSalesCashier) * 100).toFixed(1)}%
                           </p>
                         </div>
                       </div>
@@ -305,14 +324,18 @@ const Dashboard: NextPage = () => {
                 ))}
               </div>
               <div className="mt-6 pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-between">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-gray-500">Total Minggu Ini</p>
-                    <p className="text-2xl font-bold text-gray-900">Rp 37.5 Jt</p>
+                    <p className="text-sm text-gray-500">Total Penjualan</p>
+                    <p className="text-xl font-bold text-gray-900">Rp {(totalSalesCashier / 1000000).toFixed(1)} Jt</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Total Transaksi</p>
+                    <p className="text-xl font-bold text-blue-600">{totalTransactionsCashier}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-500">Rata-rata/Hari</p>
-                    <p className="text-2xl font-bold text-green-600">Rp 5.4 Jt</p>
+                    <p className="text-sm text-gray-500">Rata-rata/Kasir</p>
+                    <p className="text-xl font-bold text-green-600">Rp {(totalSalesCashier / salesData.length / 1000000).toFixed(1)} Jt</p>
                   </div>
                 </div>
               </div>

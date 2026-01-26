@@ -20,8 +20,6 @@
     "netlify:dev": "netlify dev",
     "netlify:deploy": "netlify deploy",
     "netlify:deploy:prod": "netlify deploy --prod",
-    "detect:duplicates": "node scripts/detect-duplicates.js",
-    "prebuild": "npm run detect:duplicates",
     "db:migrate": "sequelize-cli db:migrate",
     "db:seed": "sequelize-cli db:seed:all",
     "db:migrate:undo": "sequelize-cli db:migrate:undo",

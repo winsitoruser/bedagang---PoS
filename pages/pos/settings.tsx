@@ -67,10 +67,6 @@ import {
 } from 'react-icons/fa';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '../../components/ui/dialog';
 
-// Import the POS premium components
-import PremiumSidebar from '../../components/pos/premium/PremiumSidebar';
-import PremiumHeader from '../../components/pos/premium/PremiumHeader';
-
 interface PrinterSettings {
   printerName: string;
   printerType: 'thermal' | 'inkjet' | 'laser' | 'dotmatrix';
@@ -325,15 +321,7 @@ const SettingsPage: NextPage = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <PremiumSidebar />
-
       <div className="flex flex-col flex-1 overflow-hidden">
-        <PremiumHeader 
-          onSearch={() => {}} 
-          cartItemCount={0} 
-          onScanBarcode={() => {}} 
-          products={[]}
-        />
 
         <style jsx global>{`
           .printer-card {

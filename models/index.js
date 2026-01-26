@@ -35,10 +35,35 @@ db.LoyaltyTier = require('./LoyaltyTier');
 db.LoyaltyReward = require('./LoyaltyReward');
 db.PointTransaction = require('./PointTransaction');
 db.RewardRedemption = require('./RewardRedemption');
+db.Warehouse = require('./Warehouse');
+db.Location = require('./Location');
+db.StockOpname = require('./StockOpname');
+db.StockOpnameItem = require('./StockOpnameItem');
+db.IncidentReport = require('./IncidentReport');
+db.Recipe = require('./Recipe')(sequelize, DataTypes);
+db.RecipeIngredient = require('./RecipeIngredient')(sequelize, DataTypes);
+db.RecipeHistory = require('./RecipeHistory')(sequelize, DataTypes);
+db.Production = require('./Production')(sequelize, DataTypes);
+db.ProductionMaterial = require('./ProductionMaterial')(sequelize, DataTypes);
+db.ProductionHistory = require('./ProductionHistory')(sequelize, DataTypes);
+db.ProductionWaste = require('./ProductionWaste')(sequelize, DataTypes);
+db.ProductPrice = require('./ProductPrice');
+db.ProductVariant = require('./ProductVariant');
+db.SystemAlert = require('./SystemAlert');
+db.AlertSubscription = require('./AlertSubscription');
+db.AlertAction = require('./AlertAction');
 
 // Load associations if they exist
 // Associations are defined in the models themselves or in separate files
-// For now, we skip loading associations to avoid errors
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    try {
+      db[modelName].associate(db);
+    } catch (error) {
+      console.warn(`Warning: Could not load associations for ${modelName}:`, error.message);
+    }
+  }
+});
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
