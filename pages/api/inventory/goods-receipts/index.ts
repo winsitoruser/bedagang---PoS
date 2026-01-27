@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../auth/[...nextauth]';
+import { Pool } from 'pg';
+import { recordStockTransaction } from '@/lib/database/stock-movements-helper';
 
 const GoodsReceipt = require('@/models/GoodsReceipt');
 const GoodsReceiptItem = require('@/models/GoodsReceiptItem');
@@ -74,6 +76,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     const transaction = await sequelize.transaction();
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+    });
 
     try {
       const {
@@ -199,6 +204,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           averageCost: newAverageCost,
           lastRestockDate: new Date()
         }, { transaction });
+
+        // ✅ NEW: Record stock movement in new stock_movements table
+        try {
+          await recordStockTransaction(pool, {
+            productId: poItem.productId,
+            locationId: purchaseOrder.branchId || 1,
+            movementType: 'in',
+            quantity: acceptedQty,
+            referenceType: 'purchase',
+            referenceId: purchaseOrder.id,
+            referenceNumber: purchaseOrder.poNumber,
+            batchNumber: item.batchNumber,
+            expiryDate: item.expiryDate,
+            costPrice: poItem.unitPrice,
+            notes: `Goods receipt: ${grNumber}`,
+            createdBy: receivedBy
+          });
+        } catch (stockError) {
+          console.error('Error recording stock movement:', stockError);
+          // Continue even if stock movement fails
+        }
       }
 
       // Update PO status
@@ -216,6 +242,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }, { transaction });
 
       await transaction.commit();
+      await pool.end();
 
       return res.status(201).json({
         message: 'Goods receipt created successfully',
@@ -223,6 +250,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } catch (error: any) {
       await transaction.rollback();
+      await pool.end();
       console.error('Error creating goods receipt:', error);
       return res.status(500).json({ error: 'Internal server error', details: error.message });
     }

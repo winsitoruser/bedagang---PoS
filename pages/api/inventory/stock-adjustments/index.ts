@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../auth/[...nextauth]';
+import { Pool } from 'pg';
+import { recordStockTransaction } from '@/lib/database/stock-movements-helper';
 
 const StockAdjustment = require('@/models/StockAdjustment');
 const StockAdjustmentItem = require('@/models/StockAdjustmentItem');
@@ -68,6 +70,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     const transaction = await sequelize.transaction();
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+    });
 
     try {
       const {
@@ -163,10 +168,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             quantity: balanceAfter,
             lastStockCount: new Date()
           }, { transaction });
+
+          // ✅ NEW: Record stock movement in new stock_movements table
+          try {
+            await recordStockTransaction(pool, {
+              productId: item.productId,
+              locationId: branchId || 1,
+              movementType: 'adjustment',
+              quantity: Math.abs(adjustmentQty),
+              referenceType: 'adjustment',
+              referenceId: adjustment.id,
+              referenceNumber: adjustmentNumber,
+              batchNumber: item.batchNumber,
+              expiryDate: item.expiryDate,
+              notes: `Stock adjustment: ${adjustmentType} - ${reason || 'No reason provided'}`,
+              createdBy
+            });
+          } catch (stockError) {
+            console.error('Error recording stock movement:', stockError);
+            // Continue even if stock movement fails
+          }
         }
       }
 
       await transaction.commit();
+      await pool.end();
 
       return res.status(201).json({
         message: 'Stock adjustment created successfully',
@@ -174,6 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } catch (error: any) {
       await transaction.rollback();
+      await pool.end();
       console.error('Error creating stock adjustment:', error);
       return res.status(500).json({ error: 'Internal server error', details: error.message });
     }
