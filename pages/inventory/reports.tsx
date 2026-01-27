@@ -831,7 +831,7 @@ const ReportsPage: NextPage = () => {
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-4">
-                        {groupValues.map((group) => (
+                        {(apiData?.summary?.groupValues || groupValues).map((group: any) => (
                           <div key={group.id} className={`p-4 rounded-lg bg-opacity-10 border`} style={{ backgroundColor: `${group.color}20`, borderColor: `${group.color}40` }}>
                             <div className="flex items-start">
                               <div className="p-3 rounded-full mr-4" style={{ backgroundColor: `${group.color}30` }}>
@@ -949,47 +949,62 @@ const ReportsPage: NextPage = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {/* Filter pergerakan stok berdasarkan dateRange dan movementType */}
-                      {movementData
-                        .filter(movement => {
-                          // Filter berdasarkan tanggal
-                          const movementDate = new Date(movement.date);
-                          const isInDateRange = movementDate >= dateRange.from && 
-                                               movementDate <= dateRange.to;
-                          
-                          // Filter berdasarkan tipe
-                          const isTypeMatch = movementType === 'all' || 
-                                            movement.type === movementType;
-                          
-                          return isInDateRange && isTypeMatch;
-                        })
-                        .map((movement) => (
-                            <TableRow key={movement.id} className="hover:bg-gray-50">
-                              <TableCell>{formatDate(movement.date)}</TableCell>
-                              <TableCell className="font-medium">{movement.reference}</TableCell>
-                              <TableCell>{movement.productName}</TableCell>
-                              <TableCell>
-                                {movement.type === "in" && (
-                                  <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                                    <FaArrowUp className="mr-1 h-3 w-3" /> Masuk
-                                  </Badge>
-                                )}
-                                {movement.type === "out" && (
-                                  <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-                                    <FaArrowDown className="mr-1 h-3 w-3" /> Keluar
-                                  </Badge>
-                                )}
-                                {movement.type === "adjustment" && (
-                                  <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">
-                                    Penyesuaian
-                                  </Badge>
-                                )}
+                          {isLoading ? (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center py-8">
+                                <div className="flex items-center justify-center">
+                                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                                  <span className="ml-3 text-gray-600">Memuat data...</span>
+                                </div>
                               </TableCell>
-                              <TableCell className="text-center">{movement.quantity}</TableCell>
-                              <TableCell>{movement.fromTo}</TableCell>
-                              <TableCell>{movement.notes || "-"}</TableCell>
                             </TableRow>
-                          ))}
+                          ) : (
+                            /* Use API data if available, otherwise fallback to mock */
+                            (apiData?.movements || movementData)
+                              .filter((movement: any) => {
+                                // Filter berdasarkan tanggal
+                                const movementDate = new Date(movement.date || movement.createdAt);
+                                const isInDateRange = movementDate >= dateRange.from && 
+                                                     movementDate <= dateRange.to;
+                                
+                                // Filter berdasarkan tipe
+                                const movementTypeValue = movement.movementType || movement.type;
+                                const isTypeMatch = movementType === 'all' || 
+                                                  movementTypeValue === movementType;
+                                
+                                return isInDateRange && isTypeMatch;
+                              })
+                              .map((movement: any) => {
+                                const movementTypeValue = movement.movementType || movement.type;
+                                return (
+                                  <TableRow key={movement.id} className="hover:bg-gray-50">
+                                    <TableCell>{formatDate(new Date(movement.date || movement.createdAt))}</TableCell>
+                                    <TableCell className="font-medium">{movement.referenceNumber || movement.reference}</TableCell>
+                                    <TableCell>{movement.productName}</TableCell>
+                                    <TableCell>
+                                      {movementTypeValue === "in" && (
+                                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                                          <FaArrowUp className="mr-1 h-3 w-3" /> Masuk
+                                        </Badge>
+                                      )}
+                                      {movementTypeValue === "out" && (
+                                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                                          <FaArrowDown className="mr-1 h-3 w-3" /> Keluar
+                                        </Badge>
+                                      )}
+                                      {movementTypeValue === "adjustment" && (
+                                        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">
+                                          Penyesuaian
+                                        </Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-center">{Math.abs(movement.quantity)}</TableCell>
+                                    <TableCell>{movement.locationName || movement.fromTo}</TableCell>
+                                    <TableCell>{movement.notes || "-"}</TableCell>
+                                  </TableRow>
+                                );
+                              })
+                          )}
                         </TableBody>
                       </Table>
                     </div>
@@ -1091,17 +1106,26 @@ const ReportsPage: NextPage = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {lowStockData.length === 0 ? (
+                        {isLoading ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8">
+                              <div className="flex items-center justify-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                                <span className="ml-3 text-gray-600">Memuat data...</span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : (apiData?.products || lowStockData).length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={5} className="text-center py-6 text-gray-500">
                               Tidak ada produk yang berada di bawah stok minimum
                             </TableCell>
                           </TableRow>
                         ) : (
-                          /* Filter stok minimum berdasarkan cabang yang dipilih */
-                          lowStockData
-                            .filter(item => selectedBranch === 'all' || item.branchId === selectedBranch)
-                            .map((item) => {
+                          /* Use API data if available, otherwise fallback to mock */
+                          (apiData?.products || lowStockData)
+                            .filter((item: any) => selectedBranch === 'all' || item.branchId === selectedBranch || item.locationId === selectedBranch)
+                            .map((item: any) => {
                               const deficit = item.minStock - item.currentStock;
                               
                               return (
@@ -1361,7 +1385,7 @@ const ReportsPage: NextPage = () => {
       <StockMovementHistoryModal
         open={showMovementHistory}
         onClose={() => setShowMovementHistory(false)}
-        movements={movementData}
+        movements={apiData?.movements || movementData}
       />
     </InventoryLayout>
   );
