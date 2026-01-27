@@ -421,13 +421,13 @@ const InventoryPage: React.FC = () => {
                   </div>
                 </div>
               </Link>
-              <Link href="/inventory/recipes">
+              <Link href="/inventory/receive">
                 <div className="group relative overflow-hidden bg-gradient-to-br from-purple-100 to-purple-200 hover:from-purple-200 hover:to-purple-300 rounded-lg p-4 transition-all duration-300 hover:shadow-md cursor-pointer border border-purple-200">
                   <div className="flex flex-col items-center">
                     <div className="w-10 h-10 bg-purple-300 rounded-lg flex items-center justify-center mb-2">
-                      <FaCoins className="text-lg text-purple-700" />
+                      <FaTruck className="text-lg text-purple-700" />
                     </div>
-                    <span className="text-xs font-medium text-center text-purple-900">Recipe & Formula</span>
+                    <span className="text-xs font-medium text-center text-purple-900">Penerimaan Produk</span>
                   </div>
                 </div>
               </Link>

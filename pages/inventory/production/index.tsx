@@ -59,13 +59,28 @@ interface Recipe {
   id: number;
   code: string;
   name: string;
+  category?: string;
+  description?: string;
   batch_size: number;
   batch_unit: string;
   total_cost: number;
+  cost_per_unit: number;
+  estimated_yield?: number;
+  total_time_minutes?: number;
+  status: 'active' | 'draft' | 'archived';
+  created_at: string;
+  version?: number;
   ingredients?: Array<{
     product_id: number;
     quantity: number;
     unit: string;
+    unit_cost?: number;
+    subtotal_cost?: number;
+    material?: {
+      id: number;
+      name: string;
+      sku: string;
+    };
   }>;
 }
 
@@ -95,7 +110,7 @@ const ProductionPage: React.FC = () => {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [activeTab, setActiveTab] = useState<'production' | 'waste'>('production');
+  const [activeTab, setActiveTab] = useState<'production' | 'recipes' | 'waste'>('production');
   const [productions, setProductions] = useState<Production[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -498,6 +513,17 @@ const ProductionPage: React.FC = () => {
                   <span>Produksi</span>
                 </button>
                 <button
+                  onClick={() => setActiveTab('recipes')}
+                  className={`${
+                    activeTab === 'recipes'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
+                >
+                  <FaFlask />
+                  <span>Resep & Formula</span>
+                </button>
+                <button
                   onClick={() => setActiveTab('waste')}
                   className={`${
                     activeTab === 'waste'
@@ -505,11 +531,8 @@ const ProductionPage: React.FC = () => {
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
                 >
-                  <FaTrash />
-                  <span>Limbah & Produk Sisa</span>
-                  {wasteSummary.total_records > 0 && (
-                    <Badge className="bg-red-100 text-red-700">{wasteSummary.total_records}</Badge>
-                  )}
+                  <FaRecycle />
+                  <span>Limbah</span>
                 </button>
               </nav>
             </div>
@@ -704,6 +727,240 @@ const ProductionPage: React.FC = () => {
                   )}
                 </CardContent>
               </Card>
+            </>
+          )}
+
+          {/* Recipes Tab Content */}
+          {activeTab === 'recipes' && (
+            <>
+              {/* Recipe Actions */}
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={() => router.push('/inventory/recipes/new')}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <FaPlus className="mr-2" />
+                    Buat Resep Baru
+                  </Button>
+                  <Button
+                    onClick={() => router.push('/inventory/recipes/history')}
+                    variant="outline"
+                  >
+                    <FaHistory className="mr-2" />
+                    Riwayat
+                  </Button>
+                </div>
+              </div>
+
+              {/* Recipe Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-purple-600 mb-1">Total Resep</p>
+                        <p className="text-3xl font-bold text-purple-700">{recipes.length}</p>
+                      </div>
+                      <FaFlask className="text-4xl text-purple-300" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-green-600 mb-1">Aktif</p>
+                        <p className="text-3xl font-bold text-green-700">
+                          {recipes.filter(r => r.status === 'active').length}
+                        </p>
+                      </div>
+                      <FaCheckCircle className="text-4xl text-green-300" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-yellow-600 mb-1">Draft</p>
+                        <p className="text-3xl font-bold text-yellow-700">
+                          {recipes.filter(r => r.status === 'draft').length}
+                        </p>
+                      </div>
+                      <FaClock className="text-4xl text-yellow-300" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-blue-600 mb-1">Arsip</p>
+                        <p className="text-3xl font-bold text-blue-700">
+                          {recipes.filter(r => r.status === 'archived').length}
+                        </p>
+                      </div>
+                      <FaBoxOpen className="text-4xl text-blue-300" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Search */}
+              <Card className="mb-6">
+                <CardContent className="p-4">
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      placeholder="Cari resep atau SKU..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                    <FaFlask className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recipes Grid */}
+              {recipes.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12">
+                    <div className="text-center">
+                      <FaFlask className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Belum Ada Resep</h3>
+                      <p className="text-gray-600 mb-6">
+                        Mulai dengan membuat resep pertama Anda
+                      </p>
+                      <Button
+                        onClick={() => router.push('/inventory/recipes/new')}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        <FaPlus className="mr-2" />
+                        Buat Resep Baru
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {recipes
+                    .filter(recipe =>
+                      recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      recipe.code.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map((recipe) => (
+                      <Card key={recipe.id} className="hover:shadow-lg transition-shadow">
+                        <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <CardTitle className="text-xl">{recipe.name}</CardTitle>
+                                <Badge className={
+                                  recipe.status === 'active' ? 'bg-green-100 text-green-700' :
+                                  recipe.status === 'draft' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }>
+                                  {recipe.status === 'active' ? 'Aktif' :
+                                   recipe.status === 'draft' ? 'Draft' : 'Arsip'}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">{recipe.description}</p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                SKU: {recipe.code} | {recipe.category || 'General'}
+                              </p>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <div className="grid grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+                            <div>
+                              <p className="text-xs text-gray-500">Ukuran Batch</p>
+                              <p className="font-semibold text-gray-900">
+                                {recipe.batch_size} {recipe.batch_unit}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Waktu</p>
+                              <p className="font-semibold text-gray-900">
+                                {recipe.total_time_minutes || 0} min
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Total Biaya</p>
+                              <p className="font-semibold text-green-600">
+                                {formatCurrency(recipe.total_cost)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Biaya/Unit</p>
+                              <p className="font-semibold text-blue-600">
+                                {formatCurrency(recipe.cost_per_unit)}
+                              </p>
+                            </div>
+                          </div>
+
+                          {recipe.ingredients && recipe.ingredients.length > 0 && (
+                            <div className="mb-4">
+                              <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+                                <FaBoxOpen className="mr-2 text-purple-600" />
+                                Bahan ({recipe.ingredients.length})
+                              </h4>
+                              <div className="space-y-2 max-h-40 overflow-y-auto">
+                                {recipe.ingredients.slice(0, 3).map((ingredient, idx) => (
+                                  <div key={idx} className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded text-sm">
+                                    <div className="flex-1">
+                                      <p className="font-medium text-gray-900">
+                                        {ingredient.material?.name || `Material ${ingredient.product_id}`}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {ingredient.quantity} {ingredient.unit}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                                {recipe.ingredients.length > 3 && (
+                                  <p className="text-xs text-gray-500 text-center">
+                                    +{recipe.ingredients.length - 3} bahan lainnya
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                              onClick={() => handleStartProduction(recipe.id)}
+                            >
+                              <FaPlay className="mr-2" />
+                              Produksi
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => router.push(`/inventory/recipes/new?edit=${recipe.id}`)}
+                            >
+                              <FaEdit />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => router.push(`/inventory/recipes/${recipe.id}`)}
+                            >
+                              <FaEye />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              )}
             </>
           )}
 
