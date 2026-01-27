@@ -204,7 +204,7 @@ const ReportsPage: NextPage = () => {
   React.useEffect(() => {
     loadReportsData();
   }, [tab, selectedBranch, period]);
-  // Mock branch data
+  // Branch data - mapped to database locations
   const mockBranches = [
     {
       id: "all",
@@ -212,32 +212,46 @@ const ReportsPage: NextPage = () => {
       code: "ALL",
     },
     {
-      id: "branch-001",
-      name: "Farmanesia Pusat",
-      code: "FP-JKT",
-      address: "Jl. Sudirman No. 123",
+      id: "warehouse-001",
+      name: "Gudang Pusat",
+      code: "WH-001",
+      address: "Jl. Industri No. 1",
       phone: "021-5551234",
     },
     {
-      id: "branch-002",
-      name: "Farmanesia Bandung",
-      code: "FP-BDG", 
-      address: "Jl. Asia Afrika No. 45",
+      id: "branch-001",
+      name: "Toko Cabang A",
+      code: "ST-001", 
+      address: "Jl. Raya Utara No. 45",
       phone: "022-4201234",
     },
     {
-      id: "branch-003",
-      name: "Farmanesia Surabaya",
-      code: "FP-SBY",
+      id: "branch-002",
+      name: "Toko Cabang B",
+      code: "ST-002",
       address: "Jl. Pemuda No. 56",
       phone: "031-5678901",
     },
     {
-      id: "branch-004",
-      name: "Farmanesia Medan",
-      code: "FP-MDN",
+      id: "warehouse-002",
+      name: "Gudang Regional Jakarta",
+      code: "WH-002",
+      address: "Jl. Industri No. 2",
+      phone: "021-5551235",
+    },
+    {
+      id: "branch-003",
+      name: "Toko Cabang C",
+      code: "ST-003",
       address: "Jl. Diponegoro No. 78",
       phone: "061-4567890",
+    },
+    {
+      id: "branch-004",
+      name: "Toko Cabang D",
+      code: "ST-004",
+      address: "Jl. Merdeka No. 90",
+      phone: "062-3456789",
     }
   ];
   
