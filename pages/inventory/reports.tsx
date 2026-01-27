@@ -366,6 +366,188 @@ const ReportsPage: NextPage = () => {
     }
   };
   
+  // Handle print purchase order for low stock
+  const handlePrintPurchaseOrder = () => {
+    if (isLoading) {
+      alert('Sedang memuat data, silakan tunggu...');
+      return;
+    }
+    
+    // Get low stock data
+    const lowStockProducts = apiData?.products || lowStockData;
+    
+    if (!lowStockProducts || lowStockProducts.length === 0) {
+      alert('Tidak ada produk dengan stok minimum untuk dicetak');
+      return;
+    }
+    
+    // Filter by selected branch
+    const filteredProducts = lowStockProducts.filter((item: any) => 
+      selectedBranch === 'all' || item.branchId === selectedBranch || item.locationId === selectedBranch
+    );
+    
+    if (filteredProducts.length === 0) {
+      alert('Tidak ada produk dengan stok minimum di cabang yang dipilih');
+      return;
+    }
+    
+    const branchInfo = selectedBranch === 'all' 
+      ? { name: 'Semua Cabang', code: 'ALL' }
+      : mockBranches.find(b => b.id === selectedBranch) || { name: 'Semua Cabang', code: 'ALL' };
+    
+    const poNumber = `PO-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    
+    // Create purchase order HTML
+    const poContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Pesanan Pembelian - ${poNumber}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #f97316; padding-bottom: 20px; }
+            .header h1 { color: #f97316; margin: 0; font-size: 28px; }
+            .header h2 { color: #666; margin: 5px 0; font-size: 18px; font-weight: normal; }
+            .info-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
+            .info-box { flex: 1; }
+            .info-box h3 { color: #f97316; margin: 0 0 10px 0; font-size: 14px; }
+            .info-box p { margin: 5px 0; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 12px; }
+            th { background-color: #f97316; color: white; font-weight: bold; }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .total-row { font-weight: bold; background-color: #fff8f0; }
+            .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; }
+            .signature { display: flex; justify-content: space-between; margin-top: 60px; }
+            .signature-box { text-align: center; width: 200px; }
+            .signature-line { border-top: 1px solid #000; margin-top: 60px; padding-top: 5px; }
+            .notes { margin-top: 20px; padding: 15px; background-color: #fff8f0; border-left: 4px solid #f97316; }
+            .notes h4 { margin: 0 0 10px 0; color: #f97316; }
+            .urgent { color: #dc2626; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>FARMAX APOTEK</h1>
+            <h2>PESANAN PEMBELIAN (PURCHASE ORDER)</h2>
+            <p style="margin: 10px 0 0 0; font-size: 14px;">No: <strong>${poNumber}</strong></p>
+          </div>
+          
+          <div class="info-section">
+            <div class="info-box">
+              <h3>INFORMASI CABANG:</h3>
+              <p><strong>${branchInfo.name}</strong></p>
+              <p>Kode: ${branchInfo.code}</p>
+              <p>Tanggal: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
+            <div class="info-box" style="text-align: right;">
+              <h3>STATUS:</h3>
+              <p class="urgent">⚠️ URGENT - STOK MINIMUM</p>
+              <p>Total Item: ${filteredProducts.length} produk</p>
+            </div>
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 5%">No</th>
+                <th style="width: 15%">Kode SKU</th>
+                <th style="width: 30%">Nama Produk</th>
+                <th style="width: 12%" class="text-center">Stok Saat Ini</th>
+                <th style="width: 12%" class="text-center">Stok Minimum</th>
+                <th style="width: 12%" class="text-center">Defisit</th>
+                <th style="width: 14%" class="text-center">Qty Order</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredProducts.map((item: any, index: number) => {
+                const deficit = item.minStock - item.currentStock;
+                const orderQty = Math.max(deficit * 2, item.minStock); // Order 2x deficit or minimum stock
+                return `
+                  <tr>
+                    <td class="text-center">${index + 1}</td>
+                    <td>${item.sku}</td>
+                    <td>
+                      <strong>${item.name}</strong>
+                      ${item.categoryName ? `<br><small style="color: #666;">${item.categoryName}</small>` : ''}
+                    </td>
+                    <td class="text-center">${item.currentStock}</td>
+                    <td class="text-center">${item.minStock}</td>
+                    <td class="text-center" style="color: #dc2626; font-weight: bold;">${deficit}</td>
+                    <td class="text-center" style="background-color: #fef3c7; font-weight: bold;">${orderQty}</td>
+                  </tr>
+                `;
+              }).join('')}
+              <tr class="total-row">
+                <td colspan="6" class="text-right">Total Quantity Order:</td>
+                <td class="text-center">${filteredProducts.reduce((sum: number, item: any) => {
+                  const deficit = item.minStock - item.currentStock;
+                  return sum + Math.max(deficit * 2, item.minStock);
+                }, 0)}</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="notes">
+            <h4>CATATAN PENTING:</h4>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+              <li>Produk-produk di atas telah mencapai atau di bawah stok minimum</li>
+              <li>Quantity order dihitung 2x defisit untuk buffer stok</li>
+              <li>Mohon segera diproses untuk menghindari kehabisan stok</li>
+              <li>Konfirmasi ketersediaan supplier sebelum order</li>
+            </ul>
+          </div>
+          
+          <div class="signature">
+            <div class="signature-box">
+              <div class="signature-line">
+                Dibuat Oleh<br>
+                <small>Bagian Inventory</small>
+              </div>
+            </div>
+            <div class="signature-box">
+              <div class="signature-line">
+                Disetujui Oleh<br>
+                <small>Manager</small>
+              </div>
+            </div>
+            <div class="signature-box">
+              <div class="signature-line">
+                Diterima Oleh<br>
+                <small>Supplier</small>
+              </div>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p style="text-align: center; font-size: 11px; color: #666;">
+              Dokumen ini dicetak secara otomatis dari sistem Farmax Apotek<br>
+              Tanggal Cetak: ${new Date().toLocaleString('id-ID')}
+            </p>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    // Create iframe and print
+    const printFrame = document.createElement('iframe');
+    printFrame.style.display = 'none';
+    document.body.appendChild(printFrame);
+    
+    printFrame.contentDocument?.open();
+    printFrame.contentDocument?.write(poContent);
+    printFrame.contentDocument?.close();
+    
+    printFrame.onload = () => {
+      printFrame.contentWindow?.focus();
+      printFrame.contentWindow?.print();
+      setTimeout(() => {
+        document.body.removeChild(printFrame);
+      }, 100);
+    };
+  };
+  
   // Handle print report
   const handlePrintReport = () => {
     if (isLoading) {
@@ -1051,8 +1233,11 @@ const ReportsPage: NextPage = () => {
                         Daftar produk yang memerlukan pengisian ulang
                       </CardDescription>
                     </div>
-                    <Button className="bg-red-600 hover:bg-red-700">
-                      <FaFileExcel className="mr-2 h-4 w-4" /> Cetak Pesanan Pembelian
+                    <Button 
+                      className="bg-red-600 hover:bg-red-700"
+                      onClick={handlePrintPurchaseOrder}
+                    >
+                      <FaPrint className="mr-2 h-4 w-4" /> Cetak Pesanan Pembelian
                     </Button>
                   </div>
                   
