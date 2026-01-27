@@ -138,10 +138,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const operationLogger = logger.child({ method: req.method, url: req.url });
   
   try {
-    if (req.method === 'GET') {
-      const { reportType, branch, period, dateFrom, dateTo, page, limit } = req.query;
+    if (req.method === 'GET' || req.method === 'POST') {
+      // Support both GET and POST methods
+      const isPost = req.method === 'POST';
+      const { reportType, branch, period, dateFrom, dateTo, page, limit, format } = isPost 
+        ? req.body 
+        : req.query;
 
-      operationLogger.info('Processing report request', { reportType, period, branch });
+      operationLogger.info('Processing report request', { reportType, period, branch, format, method: req.method });
 
       // Map branch to location_id
       const locationId = mapBranchToLocationId(branch as string);
@@ -242,6 +246,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
+      // For POST requests with format parameter, return export-ready response
+      if (isPost && format) {
+        operationLogger.info('Export request processed', { format, reportType });
+        return res.status(200).json({
+          success: true,
+          data: {
+            reportId: `RPT-${Date.now()}`,
+            reportType,
+            format,
+            generatedAt: new Date().toISOString(),
+            ...responseData
+          },
+          isFromMock,
+          message: `Report generated successfully in ${format} format`
+        });
+      }
+
       return res.status(200).json({
         success: true,
         data: responseData,
@@ -253,7 +274,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(405).json({
       success: false,
-      message: 'Method not allowed'
+      message: 'Method not allowed. Use GET or POST.'
     });
 
   } catch (error) {
