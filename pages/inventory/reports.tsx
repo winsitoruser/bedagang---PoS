@@ -266,7 +266,11 @@ const ReportsPage: NextPage = () => {
       return;
     }
     
-    if (!categoryValues.length && !apiData) {
+    // Check if we have any data to export
+    const hasData = (categoryValues && categoryValues.length > 0) || 
+                    (apiData && (apiData.summary || apiData.movements || apiData.products));
+    
+    if (!hasData) {
       alert('Tidak ada data untuk diekspor');
       return;
     }
@@ -297,35 +301,39 @@ const ReportsPage: NextPage = () => {
     
     switch (tab) {
       case 'stock-value':
+        // Use API data if available, otherwise fallback to mock
+        const exportCategories = apiData?.summary?.categories || categoryValues;
         switch (exportFormat) {
           case 'pdf':
             exportStockValueSummaryToPDF(
-              categoryValues,
+              exportCategories,
               `laporan-nilai-stok-${branchCode}${dateStr}.pdf`
             );
             break;
           case 'excel':
             exportStockValueSummaryToExcel(
-              categoryValues,
+              exportCategories,
               `laporan-nilai-stok-${branchCode}${dateStr}.xlsx`
             );
             break;
           case 'csv':
             exportStockValueSummaryToExcel(
-              categoryValues,
+              exportCategories,
               `laporan-nilai-stok-${branchCode}${dateStr}.csv`
             );
             break;
         }
         break;
       case 'stock-movement':
+        // Use API data if available, otherwise fallback to mock
+        const exportMovements = apiData?.movements || movementData;
         exportProductsToExcel(
-          movementData.map(m => ({
+          exportMovements.map((m: any) => ({
             id: m.id,
-            code: m.reference,
+            code: m.referenceNumber || m.reference,
             name: m.productName,
-            category: m.type,
-            stockQty: m.quantity,
+            category: m.movementType || m.type,
+            stockQty: Math.abs(m.quantity),
             buyPrice: 0,
             stockValue: 0,
             unit: 'Movement'
@@ -334,11 +342,13 @@ const ReportsPage: NextPage = () => {
         );
         break;
       case 'low-stock':
+        // Use API data if available, otherwise fallback to mock
+        const exportLowStock = apiData?.products || lowStockData;
         exportProductsToExcel(
-          lowStockData.map(p => ({
+          exportLowStock.map((p: any) => ({
             id: p.id,
             code: p.sku,
-            name: p.name,
+            name: p.name || p.productName,
             category: p.categoryName,
             stockQty: p.currentStock,
             buyPrice: p.price,
@@ -363,7 +373,11 @@ const ReportsPage: NextPage = () => {
       return;
     }
     
-    if (!categoryValues.length && !apiData) {
+    // Check if we have any data to print
+    const hasData = (categoryValues && categoryValues.length > 0) || 
+                    (apiData && (apiData.summary || apiData.movements || apiData.products));
+    
+    if (!hasData) {
       alert('Tidak ada data untuk dicetak');
       return;
     }
@@ -372,6 +386,9 @@ const ReportsPage: NextPage = () => {
     const branchInfo = selectedBranch === 'all' 
       ? { name: 'Semua Cabang' }
       : mockBranches.find(b => b.id === selectedBranch) || { name: 'Semua Cabang' };
+    
+    // Use API data if available, otherwise fallback to mock
+    const printCategories = apiData?.summary?.categories || categoryValues;
       
     // Create HTML content for printing
     const printContent = `
@@ -408,7 +425,7 @@ const ReportsPage: NextPage = () => {
               </tr>
             </thead>
             <tbody>
-              ${categoryValues.map((category, index) => `
+              ${printCategories.map((category: any, index: number) => `
                 <tr>
                   <td>${index + 1}</td>
                   <td>${category.name}</td>
@@ -418,7 +435,7 @@ const ReportsPage: NextPage = () => {
               `).join('')}
               <tr class="total">
                 <td colspan="3">Total</td>
-                <td>${formatRupiah(categoryValues.reduce((sum, cat) => sum + cat.value, 0))}</td>
+                <td>${formatRupiah(printCategories.reduce((sum: number, cat: any) => sum + cat.value, 0))}</td>
               </tr>
             </tbody>
           </table>
