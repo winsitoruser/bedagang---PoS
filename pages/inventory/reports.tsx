@@ -1386,38 +1386,13 @@ const ReportsPage: NextPage = () => {
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-4">
-                        {(apiData?.topSellingProducts || [
-                          {
-                            id: 'top-1',
-                            productName: 'Paracetamol 500mg',
-                            sku: 'MED-PCT-500',
-                            totalSold: 450,
-                            revenue: 5400000,
-                            profit: 1350000,
-                            profitMargin: 25,
-                            trend: 'up'
-                          },
-                          {
-                            id: 'top-2',
-                            productName: 'Vitamin C 1000mg',
-                            sku: 'SUP-VTC-1000',
-                            totalSold: 320,
-                            revenue: 4800000,
-                            profit: 1200000,
-                            profitMargin: 25,
-                            trend: 'stable'
-                          },
-                          {
-                            id: 'top-3',
-                            productName: 'Amoxicillin 500mg',
-                            sku: 'MED-AMX-500',
-                            totalSold: 280,
-                            revenue: 7000000,
-                            profit: 1750000,
-                            profitMargin: 25,
-                            trend: 'up'
-                          }
-                        ]).map((product, index) => (
+                        {(apiData?.topSellingProducts && apiData.topSellingProducts.length > 0 ? apiData.topSellingProducts : []).length === 0 ? (
+                          <div className="text-center py-8 text-gray-500">
+                            <FaInfoCircle className="mx-auto h-12 w-12 mb-3 text-gray-400" />
+                            <p>Tidak ada data penjualan dalam periode ini</p>
+                          </div>
+                        ) : (
+                          (apiData?.topSellingProducts || []).map((product: any, index: number) => (
                           <div key={product.id} className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
                             <div className="flex items-center">
                               <div className="flex items-center justify-center w-8 h-8 bg-green-600 text-white rounded-full text-sm font-bold mr-3">
@@ -1456,28 +1431,14 @@ const ReportsPage: NextPage = () => {
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-4">
-                        {(apiData?.slowMovingProducts || [
-                          {
-                            id: 'slow-1',
-                            productName: 'Obat Khusus X',
-                            sku: 'MED-OKX-001',
-                            currentStock: 45,
-                            lastSaleDate: '2024-11-15',
-                            daysSinceLastSale: 76,
-                            value: 2250000,
-                            recommendation: 'Consider discount or return to supplier'
-                          },
-                          {
-                            id: 'slow-2',
-                            productName: 'Suplemen Langka Y',
-                            sku: 'SUP-SLY-002',
-                            currentStock: 28,
-                            lastSaleDate: '2024-10-20',
-                            daysSinceLastSale: 102,
-                            value: 1400000,
-                            recommendation: 'Consider promotional pricing'
-                          }
-                        ]).map((product) => (
+                        {(apiData?.slowMovingProducts && apiData.slowMovingProducts.length > 0 ? apiData.slowMovingProducts : []).length === 0 ? (
+                          <div className="text-center py-8 text-gray-500">
+                            <FaInfoCircle className="mx-auto h-12 w-12 mb-3 text-gray-400" />
+                            <p>Tidak ada produk slow moving</p>
+                            <p className="text-sm mt-2">Semua produk bergerak dengan baik!</p>
+                          </div>
+                        ) : (
+                          (apiData?.slowMovingProducts || []).map((product: any) => (
                           <div key={product.id} className="p-4 bg-red-50 rounded-lg border border-red-200">
                             <div className="flex justify-between items-start mb-2">
                               <div>
