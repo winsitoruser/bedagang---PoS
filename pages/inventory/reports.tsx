@@ -1413,7 +1413,8 @@ const ReportsPage: NextPage = () => {
                               </div>
                             </div>
                           </div>
-                        ))}
+                          ))
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -1466,7 +1467,8 @@ const ReportsPage: NextPage = () => {
                               </p>
                             </div>
                           </div>
-                        ))}
+                          ))
+                        )}
                       </div>
                     </CardContent>
                   </Card>
