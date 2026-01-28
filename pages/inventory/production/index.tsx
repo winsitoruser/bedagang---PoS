@@ -110,7 +110,7 @@ const ProductionPage: React.FC = () => {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [activeTab, setActiveTab] = useState<'production' | 'recipes' | 'waste'>('production');
+  const [activeTab, setActiveTab] = useState<'production' | 'recipes'>('production');
   const [productions, setProductions] = useState<Production[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -522,17 +522,6 @@ const ProductionPage: React.FC = () => {
                 >
                   <FaFlask />
                   <span>Resep & Formula</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('waste')}
-                  className={`${
-                    activeTab === 'waste'
-                      ? 'border-red-500 text-red-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
-                >
-                  <FaRecycle />
-                  <span>Limbah</span>
                 </button>
               </nav>
             </div>
@@ -961,187 +950,6 @@ const ProductionPage: React.FC = () => {
                     ))}
                 </div>
               )}
-            </>
-          )}
-
-          {/* Waste Tab Content */}
-          {activeTab === 'waste' && (
-            <>
-              {/* Waste Summary Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-red-600 mb-1">Total Limbah</p>
-                        <p className="text-3xl font-bold text-red-700">{wasteSummary.total_records}</p>
-                        <p className="text-xs text-gray-600 mt-1">Record</p>
-                      </div>
-                      <FaTrash className="text-4xl text-red-300" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-orange-600 mb-1">Total Kerugian</p>
-                        <p className="text-xl font-bold text-orange-700">
-                          {formatCurrency(wasteSummary.total_loss)}
-                        </p>
-                      </div>
-                      <FaDollarSign className="text-4xl text-orange-300" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-green-600 mb-1">Recovery</p>
-                        <p className="text-xl font-bold text-green-700">
-                          {formatCurrency(wasteSummary.total_recovery)}
-                        </p>
-                      </div>
-                      <FaShoppingCart className="text-4xl text-green-300" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-red-50 to-pink-100 border-red-300">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-red-600 mb-1">Kerugian Bersih</p>
-                        <p className="text-xl font-bold text-red-700">
-                          {formatCurrency(wasteSummary.net_loss)}
-                        </p>
-                      </div>
-                      <FaExclamationTriangle className="text-4xl text-red-300" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Waste Management Card */}
-              <Card className="mb-6 border-2 border-red-200">
-                <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center">
-                      <FaTrash className="mr-2 text-red-600" />
-                      Manajemen Limbah & Produk Sisa
-                    </CardTitle>
-                    <Button
-                      onClick={() => setShowWasteModal(true)}
-                      className="bg-red-600 hover:bg-red-700"
-                      size="sm"
-                    >
-                      <FaPlus className="mr-2" />
-                      Catat Limbah Baru
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="mb-4">
-                    <Input
-                      type="text"
-                      placeholder="Cari nomor limbah, batch, atau alasan..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-
-                  {filteredWaste.length === 0 ? (
-                    <div className="text-center py-12">
-                      <FaCheckCircle className="text-6xl text-green-300 mx-auto mb-4" />
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                        Belum Ada Limbah Tercatat
-                      </h3>
-                      <p className="text-gray-600 mb-6">
-                        Klik "Catat Limbah Baru" untuk mencatat produk cacat atau limbah produksi
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {filteredWaste.map((waste) => (
-                        <div key={waste.id} className="border-2 border-red-200 rounded-xl p-5 hover:border-red-300 transition-colors bg-white">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <Badge className="bg-red-100 text-red-700 text-sm">{waste.waste_number}</Badge>
-                                {getTypeBadge(waste.waste_type)}
-                                {getCategoryBadge(waste.waste_category)}
-                                {waste.production && (
-                                  <Badge className="bg-indigo-100 text-indigo-700">
-                                    {waste.production.batch_number}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-600 mb-1">
-                                <span className="font-semibold">{waste.quantity} {waste.unit}</span>
-                                {waste.reason && ` • ${waste.reason}`}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-2xl font-bold text-red-600">
-                                {formatCurrency(waste.net_loss)}
-                              </p>
-                              <p className="text-xs text-gray-500">Kerugian Bersih</p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg mb-3">
-                            <div>
-                              <p className="text-xs text-gray-500">Nilai Kerugian</p>
-                              <p className="text-sm font-bold text-orange-600">
-                                {formatCurrency(waste.cost_value)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Recovery</p>
-                              <p className="text-sm font-bold text-green-600">
-                                {formatCurrency(waste.clearance_price)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Metode</p>
-                              <p className="text-sm font-semibold text-gray-700">
-                                {getMethodLabel(waste.disposal_method)}
-                              </p>
-                            </div>
-                          </div>
-
-                          {waste.notes && (
-                            <div className="p-2 bg-blue-50 border-l-4 border-blue-400 rounded text-xs text-gray-700 mb-2">
-                              <strong>Catatan:</strong> {waste.notes}
-                            </div>
-                          )}
-
-                          <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t">
-                            <div className="flex items-center space-x-3">
-                              <span className="flex items-center">
-                                <FaCalendar className="mr-1" />
-                                {formatDate(waste.waste_date)}
-                              </span>
-                            </div>
-                            <Badge className={
-                              waste.status === 'recovered' ? 'bg-green-100 text-green-700' :
-                              waste.status === 'disposed' ? 'bg-gray-100 text-gray-700' :
-                              'bg-blue-100 text-blue-700'
-                            }>
-                              {waste.status === 'recovered' ? 'Recovered' :
-                               waste.status === 'disposed' ? 'Disposed' : 'Recorded'}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </>
           )}
         </div>
