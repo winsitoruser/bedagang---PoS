@@ -21,7 +21,15 @@ export class IntegratedReceiptService {
       const data = await response.json();
       
       if (data.success && data.data) {
-        return data.data.map((po: any) => ({
+        // Handle both data.data.orders (nested) and data.data (direct array)
+        const orders = data.data.orders || data.data;
+        
+        if (!Array.isArray(orders)) {
+          console.error('Expected orders to be an array, got:', typeof orders);
+          return [];
+        }
+        
+        return orders.map((po: any) => ({
           id: po.id.toString(),
           poNumber: po.po_number || po.poNumber,
           orderDate: po.order_date || po.orderDate,
