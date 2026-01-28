@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { withApiHandler, success, error } from '@/utils/api-utils';
-import { authenticateUser, isAuthorized } from '@/middleware/auth';
+import { authenticateUser, isAuthorized } from '@/lib/auth';
 import db from '@/models';
 import { Op } from 'sequelize';
 import { logger } from '@/server/monitoring';
@@ -169,113 +169,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 export default withApiHandler(handler);
-              tenantId: tenantId,
-              createdAt: {
-                [Op.between]: [startDate, now]
-              },
-              ...(branch !== 'all' ? { branchId: branch } : {})
-            }
-          });
-          
-          if (expensesResult !== null && typeof expensesResult !== 'undefined') {
-            totalExpenses = expensesResult || mockExpenses;
-          }
-        } catch (queryError) {
-          apiLogger.error('Error querying expenses:', queryError);
-        }
-      }
-      
-      // Check if we have BankAccount model
-      if (db.BankAccount) {
-        // Query untuk cash on hand
-        try {
-          const cashResult = await db.BankAccount.sum('balance', {
-            where: {
-              type: 'cash',
-              tenantId: tenantId,
-              ...(branch !== 'all' ? { branchId: branch } : {})
-            }
-          });
-          
-          if (cashResult !== null && typeof cashResult !== 'undefined') {
-            cashOnHand = cashResult || mockCashOnHand;
-          }
-        } catch (queryError) {
-          apiLogger.error('Error querying cash:', queryError);
-        }
-        
-        // Query untuk bank balance
-        try {
-          const bankResult = await db.BankAccount.sum('balance', {
-            where: {
-              type: 'bank',
-              tenantId: tenantId,
-              ...(branch !== 'all' ? { branchId: branch } : {})
-            }
-          });
-          
-          if (bankResult !== null && typeof bankResult !== 'undefined') {
-            bankBalance = bankResult || mockBankBalance;
-          }
-        } catch (queryError) {
-          apiLogger.error('Error querying bank balance:', queryError);
-        }
-      }
-      
-      // Check if we have Product model
-      if (db.Product) {
-        // Query untuk inventory value
-        try {
-          const inventoryResult = await db.Product.sum(db.sequelize.literal('stock * price'), {
-            where: {
-              tenantId: tenantId,
-              ...(branch !== 'all' ? { branchId: branch } : {})
-            }
-          });
-          
-          if (inventoryResult !== null && typeof inventoryResult !== 'undefined') {
-            inventoryValue = inventoryResult || mockInventoryValue;
-          }
-        } catch (queryError) {
-          apiLogger.error('Error querying inventory value:', queryError);
-        }
-      }
-      
-      // Fallback to using mock data
-    } catch (dbError) {
-      apiLogger.error('Database error dalam Finance Summary:', dbError);
-      // Keep using mock data
-    }
-    
-    // Kategori pendapatan (menggunakan data fixed untuk demo)
-    const revenueByCategory = {
-      prescription: totalIncome * 0.45, // 45% dari total pendapatan
-      otc: totalIncome * 0.25, // 25% dari total pendapatan
-      cosmetics: totalIncome * 0.15, // 15% dari total pendapatan
-      supplements: totalIncome * 0.1, // 10% dari total pendapatan
-      others: totalIncome * 0.05, // 5% dari total pendapatan
-    };
-    
-    // Kategori pengeluaran (menggunakan data fixed untuk demo)
-    const expensesByCategory = {
-      purchases: totalExpenses * 0.60, // 60% dari total pengeluaran
-      salary: totalExpenses * 0.25, // 25% dari total pengeluaran
-      rent: totalExpenses * 0.08, // 8% dari total pengeluaran
-      utilities: totalExpenses * 0.05, // 5% dari total pengeluaran
-      others: totalExpenses * 0.02, // 2% dari total pengeluaran
-    };
-    
-    // Tren pendapatan bulanan (untuk grafik, menggunakan data fixed untuk demo)
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentMonth = now.getMonth();
-    
-    const revenueByMonth = monthNames.map((month, index) => {
-      // Buat trend naik untuk last 6 bulan
-      let multiplier = 1.0;
-      
-      if (index >= currentMonth - 5 && index <= currentMonth) {
-        const monthDiff = index - (currentMonth - 5);
-        multiplier = 0.7 + (monthDiff * 0.06); // 0.7, 0.76, 0.82, 0.88, 0.94, 1.0
       }
       
       return {

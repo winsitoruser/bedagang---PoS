@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { withApiHandler, success, error, parseQueryParams } from '@/utils/api-utils';
 import logger from '@/lib/logger';
 import { getProducts as fetchProductsFromDb, ProductFilter } from '@/lib/adapters/product-adapter';
-import { authenticateUser } from '@/middleware/auth';
+import { authenticateUser } from '@/lib/auth';
 
 // Type untuk product data
 interface ProductData {

@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { authenticateUser, isAuthorized } from '../../../middleware/auth';
+import { authenticateUser, isAuthorized } from '@/lib/auth';
 
 // Sample stock movement data
 const stockMovements = [

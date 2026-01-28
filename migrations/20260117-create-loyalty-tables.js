@@ -157,10 +157,10 @@ module.exports = {
         allowNull: true
       },
       productId: {
-        type: Sequelize.UUID,
+        type: Sequelize.INTEGER,
         allowNull: true,
         references: {
-          model: 'Products',
+          model: 'products',
           key: 'id'
         }
       },

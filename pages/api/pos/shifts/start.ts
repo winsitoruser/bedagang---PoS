@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { withApiHandler, success, error } from '@/utils/api-utils';
-import { authenticateUser, isAuthorized } from '@/middleware/auth';
+import { authenticateUser, isAuthorized } from '@/lib/auth';
 import { getCurrentShift, startShift } from '@/server/sequelize/adapters/pos-shift-adapter';
 
 /**

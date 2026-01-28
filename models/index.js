@@ -13,9 +13,9 @@ db.Employee = require('./Employee')(sequelize, DataTypes);
 db.Category = require('./Category')(sequelize, DataTypes);
 db.Product = require('./Product')(sequelize, DataTypes);
 db.Supplier = require('./Supplier')(sequelize, DataTypes);
+db.Stock = require('./Stock')(sequelize, DataTypes);
 
 // Models that are already defined with sequelize instance
-db.Stock = require('./Stock');
 db.StockMovement = require('./StockMovement');
 db.StockAdjustment = require('./StockAdjustment');
 db.StockAdjustmentItem = require('./StockAdjustmentItem');
@@ -55,15 +55,19 @@ db.AlertAction = require('./AlertAction');
 
 // Load associations if they exist
 // Associations are defined in the models themselves or in separate files
+console.log('Loading model associations...');
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
     try {
+      console.log(`Loading associations for ${modelName}...`);
       db[modelName].associate(db);
+      console.log(`✓ Associations loaded for ${modelName}`);
     } catch (error) {
       console.warn(`Warning: Could not load associations for ${modelName}:`, error.message);
     }
   }
 });
+console.log('All associations loaded.');
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;

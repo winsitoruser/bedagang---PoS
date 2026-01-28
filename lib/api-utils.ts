@@ -1,5 +1,3 @@
-import { toastAlert } from '@/components/common/alerts';
-
 export interface ApiResponse<T> {
   data: T | null;
   error: string | null;
@@ -11,7 +9,7 @@ export interface ApiResponse<T> {
 /**
  * Standardized error handling for API requests
  * @param response Fetch response object
- * @param showToast Whether to show toast notifications
+ * @param showToast Whether to show toast notifications (not used in server-side)
  * @returns Standardized API response
  */
 export async function handleApiResponse<T>(
@@ -22,22 +20,13 @@ export async function handleApiResponse<T>(
     const data = await response.json();
     
     if (response.ok) {
-      if (showToast && data.message) {
-        toastAlert(data.message, 'success');
-      }
       return { data, error: null, success: true, status: response.status, message: data.message };
     } else {
       const errorMessage = data.error || 'An error occurred';
-      if (showToast) {
-        toastAlert(errorMessage, 'error');
-      }
       return { data: null, error: errorMessage, success: false, status: response.status };
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-    if (showToast) {
-      toastAlert(errorMessage, 'error');
-    }
     return { data: null, error: errorMessage, success: false, status: 500 };
   }
 }

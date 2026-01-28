@@ -13,7 +13,8 @@ export default async function handler(req, res) {
   try {
     const session = await getServerSession(req, res, authOptions);
     
-    if (!session) {
+    // Allow access in development mode even without session
+    if (!session && process.env.NODE_ENV !== 'development') {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -21,8 +22,8 @@ export default async function handler(req, res) {
     const pool = new Pool({
       user: process.env.DB_USER || 'postgres',
       host: process.env.DB_HOST || '127.0.0.1',
-      database: process.env.DB_NAME || 'farmanesia_dev',
-      password: process.env.DB_PASSWORD || 'postgres',
+      database: process.env.DB_NAME || 'bedagang_dev',
+      password: process.env.DB_PASSWORD || 'jakarta123',
       port: process.env.DB_PORT || 5432,
     });
 
@@ -181,7 +182,7 @@ export default async function handler(req, res) {
             new Date(wasteDate),
             disposalMethod === 'clearance_sale' ? 'recorded' : 'disposed',
             notes || null,
-            session.user.email || session.user.name
+            session?.user?.email || session?.user?.name || 'system'
           ]
         );
 

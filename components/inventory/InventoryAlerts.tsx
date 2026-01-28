@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -70,9 +70,155 @@ interface InventoryAlertsProps {
 
 const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = false }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>('expiry');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // State untuk data dari API
+  const [expiryAlerts, setExpiryAlerts] = useState<ExpiryAlert[]>([]);
+  const [overstockAlerts, setOverstockAlerts] = useState<OverstockAlert[]>([]);
+  const [priceChangeAlerts, setPriceChangeAlerts] = useState<PriceChangeAlert[]>([]);
+  const [pricingSuggestions, setPricingSuggestions] = useState<PricingSuggestion[]>([]);
 
-  // Mock data - Expiry Alerts
-  const expiryAlerts: ExpiryAlert[] = [
+  // Fetch data dari API saat component mount
+  useEffect(() => {
+    fetchAlertsData();
+  }, []);
+
+  const fetchAlertsData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Fetch expiry alerts dari API
+      try {
+        const expiryRes = await fetch('/api/inventory/expiry?daysUntil=30');
+        const expiryData = await expiryRes.json();
+        
+        if (expiryData.success && expiryData.data) {
+          const mappedExpiry = expiryData.data.map((item: any) => ({
+            id: item.id || `EXP-${item.product_id}`,
+            productName: item.product_name || item.name,
+            sku: item.sku || 'N/A',
+            batchNumber: item.batch_number || 'N/A',
+            expiryDate: item.expiry_date || item.expiry,
+            daysUntilExpiry: item.days_until_expiry || 0,
+            quantity: item.quantity || 0,
+            unit: item.unit || 'pcs',
+            location: item.location || 'Toko Pusat',
+            severity: item.days_until_expiry <= 3 ? 'critical' : item.days_until_expiry <= 7 ? 'warning' : 'info',
+            suggestedAction: item.days_until_expiry <= 3 
+              ? 'Diskon 30% atau return ke supplier'
+              : item.days_until_expiry <= 7
+              ? 'Promo buy 1 get 1 atau diskon 20%'
+              : 'Monitor penjualan, transfer ke cabang jika perlu'
+          }));
+          setExpiryAlerts(mappedExpiry);
+        } else {
+          setExpiryAlerts([]);
+        }
+      } catch (err) {
+        console.warn('Expiry API error:', err);
+        setExpiryAlerts([]);
+      }
+
+      // Fetch overstock dari API baru
+      try {
+        const overstockRes = await fetch('/api/inventory/overstock?limit=10');
+        const overstockData = await overstockRes.json();
+        
+        if (overstockData.success && overstockData.data) {
+          const mappedOverstock = overstockData.data.map((item: any) => ({
+            id: item.id,
+            productName: item.product_name,
+            sku: item.sku,
+            currentStock: item.current_stock,
+            averageSales: item.average_sales,
+            daysOfStock: item.days_of_stock,
+            unit: item.unit,
+            location: item.location,
+            severity: item.severity,
+            suggestedAction: item.suggested_action,
+            potentialLoss: item.potential_loss
+          }));
+          setOverstockAlerts(mappedOverstock);
+        } else {
+          setOverstockAlerts([]);
+        }
+      } catch (err) {
+        console.warn('Overstock API error:', err);
+        setOverstockAlerts([]);
+      }
+
+      // Fetch price changes dari API baru
+      try {
+        const priceChangesRes = await fetch('/api/inventory/price-changes?limit=10&days=7');
+        const priceChangesData = await priceChangesRes.json();
+        
+        if (priceChangesData.success && priceChangesData.data) {
+          const mappedPriceChanges = priceChangesData.data.map((item: any) => ({
+            id: item.id,
+            productName: item.product_name,
+            sku: item.sku,
+            oldPrice: item.old_price,
+            newPrice: item.new_price,
+            changePercentage: item.change_percentage,
+            changeDate: item.change_date,
+            changedBy: item.changed_by || 'System',
+            reason: item.change_reason,
+            type: item.change_type
+          }));
+          setPriceChangeAlerts(mappedPriceChanges);
+        } else {
+          setPriceChangeAlerts([]);
+        }
+      } catch (err) {
+        console.warn('Price changes API error:', err);
+        setPriceChangeAlerts([]);
+      }
+
+      // Fetch pricing suggestions dari API baru
+      try {
+        const suggestionsRes = await fetch('/api/inventory/pricing-suggestions?limit=10');
+        const suggestionsData = await suggestionsRes.json();
+        
+        if (suggestionsData.success && suggestionsData.data) {
+          const mappedSuggestions = suggestionsData.data.map((item: any) => ({
+            id: item.id,
+            productName: item.product_name,
+            sku: item.sku,
+            currentPrice: item.current_price,
+            costPrice: item.cost_price || 0,
+            currentMargin: parseFloat(item.current_margin) || 0,
+            suggestedPrice: item.suggested_price,
+            suggestedMargin: parseFloat(item.suggested_margin) || 0,
+            reason: item.reason,
+            competitorPrice: item.competitor_price,
+            averageMarketPrice: item.market_price,
+            salesTrend: item.sales_trend || 'stable'
+          }));
+          setPricingSuggestions(mappedSuggestions);
+        } else {
+          setPricingSuggestions([]);
+        }
+      } catch (err) {
+        console.warn('Pricing suggestions API error:', err);
+        setPricingSuggestions([]);
+      }
+      
+    } catch (err) {
+      console.error('Error fetching alerts data:', err);
+      // Set empty arrays jika terjadi error
+      setExpiryAlerts([]);
+      setOverstockAlerts([]);
+      setPriceChangeAlerts([]);
+      setPricingSuggestions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock data sebagai fallback
+  const mockExpiryAlerts: ExpiryAlert[] = [
     {
       id: 'EXP001',
       productName: 'Susu UHT 1L',
@@ -114,8 +260,7 @@ const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = fal
     }
   ];
 
-  // Mock data - Overstock Alerts
-  const overstockAlerts: OverstockAlert[] = [
+  const mockOverstockAlerts: OverstockAlert[] = [
     {
       id: 'OVR001',
       productName: 'Minyak Goreng 2L',
@@ -143,8 +288,8 @@ const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = fal
     }
   ];
 
-  // Mock data - Price Change Alerts
-  const priceChangeAlerts: PriceChangeAlert[] = [
+  // Mock data untuk price changes (sementara)
+  const mockPriceChangeAlerts: PriceChangeAlert[] = [
     {
       id: 'PRC001',
       productName: 'Kopi Arabica Premium 250g',
@@ -171,8 +316,8 @@ const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = fal
     }
   ];
 
-  // Mock data - Pricing Suggestions
-  const pricingSuggestions: PricingSuggestion[] = [
+  // Mock data untuk pricing suggestions (sementara)
+  const mockPricingSuggestions: PricingSuggestion[] = [
     {
       id: 'SUG001',
       productName: 'Beras Premium 5kg',
@@ -259,6 +404,22 @@ const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = fal
   const suggestionCount = pricingSuggestions.length;
 
   if (showInDashboard) {
+    // Loading state
+    if (loading) {
+      return (
+        <div className="space-y-4">
+          <Card className="border-0 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-center">
+                <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+                <span className="ml-3 text-gray-600">Memuat alerts...</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4">
         {/* Critical Alerts Summary */}
@@ -350,8 +511,15 @@ const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = fal
         </CardHeader>
         {expandedSection === 'expiry' && (
           <CardContent>
-            <div className="space-y-3">
-              {expiryAlerts.map((alert) => (
+            {expiryAlerts.length === 0 ? (
+              <div className="text-center py-8">
+                <FaCalendarAlt className="mx-auto text-4xl text-gray-300 mb-3" />
+                <p className="text-gray-600 font-medium">Belum ada produk yang mendekati expired</p>
+                <p className="text-sm text-gray-500 mt-1">Data akan muncul ketika ada produk dengan tanggal kadaluarsa dalam 30 hari</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {expiryAlerts.map((alert) => (
                 <div key={alert.id} className="border-2 border-gray-200 rounded-lg p-4 hover:border-red-300 transition-colors">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -389,7 +557,8 @@ const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = fal
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
           </CardContent>
         )}
       </Card>
@@ -422,8 +591,15 @@ const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = fal
         </CardHeader>
         {expandedSection === 'overstock' && (
           <CardContent>
-            <div className="space-y-3">
-              {overstockAlerts.map((alert) => (
+            {overstockAlerts.length === 0 ? (
+              <div className="text-center py-8">
+                <FaBoxes className="mx-auto text-4xl text-gray-300 mb-3" />
+                <p className="text-gray-600 font-medium">Belum ada produk overstock</p>
+                <p className="text-sm text-gray-500 mt-1">Data akan muncul ketika stok produk melebihi batas maksimum</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {overstockAlerts.map((alert) => (
                 <div key={alert.id} className="border-2 border-gray-200 rounded-lg p-4 hover:border-orange-300 transition-colors">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -463,7 +639,8 @@ const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = fal
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
           </CardContent>
         )}
       </Card>
@@ -489,8 +666,15 @@ const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = fal
         </CardHeader>
         {expandedSection === 'priceChange' && (
           <CardContent>
-            <div className="space-y-3">
-              {priceChangeAlerts.map((alert) => (
+            {priceChangeAlerts.length === 0 ? (
+              <div className="text-center py-8">
+                <FaDollarSign className="mx-auto text-4xl text-gray-300 mb-3" />
+                <p className="text-gray-600 font-medium">Belum ada riwayat perubahan harga</p>
+                <p className="text-sm text-gray-500 mt-1">Data akan muncul ketika ada perubahan harga produk dalam 7 hari terakhir</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {priceChangeAlerts.map((alert) => (
                 <div key={alert.id} className="border-2 border-gray-200 rounded-lg p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -525,7 +709,8 @@ const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = fal
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
           </CardContent>
         )}
       </Card>
@@ -551,8 +736,15 @@ const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = fal
         </CardHeader>
         {expandedSection === 'pricing' && (
           <CardContent>
-            <div className="space-y-3">
-              {pricingSuggestions.map((suggestion) => (
+            {pricingSuggestions.length === 0 ? (
+              <div className="text-center py-8">
+                <FaLightbulb className="mx-auto text-4xl text-gray-300 mb-3" />
+                <p className="text-gray-600 font-medium">Belum ada saran penetapan harga</p>
+                <p className="text-sm text-gray-500 mt-1">Sistem akan memberikan saran harga berdasarkan margin dan tren penjualan</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pricingSuggestions.map((suggestion) => (
                 <div key={suggestion.id} className="border-2 border-gray-200 rounded-lg p-4 hover:border-green-300 transition-colors">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -604,7 +796,8 @@ const InventoryAlerts: React.FC<InventoryAlertsProps> = ({ showInDashboard = fal
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
           </CardContent>
         )}
       </Card>

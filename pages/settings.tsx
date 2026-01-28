@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { 
   FaCog, FaStore, FaUsers, FaMoneyBillWave, FaPrint,
   FaShoppingCart, FaBoxOpen, FaBell, FaShieldAlt, FaArrowRight,
-  FaDatabase, FaCloud, FaKey, FaPalette
+  FaDatabase, FaCloud, FaKey, FaPalette, FaFlask
 } from 'react-icons/fa';
 
 const SettingsPage: React.FC = () => {
@@ -67,6 +67,14 @@ const SettingsPage: React.FC = () => {
       color: "bg-gradient-to-br from-orange-500 to-orange-600",
       href: "/settings/inventory",
       items: ["Kategori", "Supplier", "Unit"]
+    },
+    {
+      title: "Resep & Formula",
+      description: "Kelola resep produksi dan formula",
+      icon: FaFlask,
+      color: "bg-gradient-to-br from-emerald-500 to-emerald-600",
+      href: "/settings/recipes",
+      items: ["Resep", "Bahan", "History"]
     },
     {
       title: "Pengaturan Keuangan",

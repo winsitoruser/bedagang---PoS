@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { authenticateUser, isAuthorized } from '../../../middleware/auth';
+import { authenticateUser, isAuthorized } from '@/lib/auth';
 import { withApiHandler, success, error, parseQueryParams, ApiContext } from '@/utils/api-utils';
 import { ApiError } from '@/middleware/error-handler';
 import DummyDataGenerator from '@/utils/dummy-data-generator';

@@ -3,33 +3,27 @@
 module.exports = (sequelize, DataTypes) => {
   const Supplier = sequelize.define('Supplier', {
     id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
       primaryKey: true
-    },
-    supplier_code: {
-      type: DataTypes.STRING(50),
-      unique: true,
-      allowNull: false
     },
     name: {
       type: DataTypes.STRING(255),
       allowNull: false
     },
-    company_name: {
-      type: DataTypes.STRING(255)
+    code: {
+      type: DataTypes.STRING(50),
+      unique: true,
+      allowNull: true
     },
     contact_person: {
-      type: DataTypes.STRING(255)
-    },
-    email: {
       type: DataTypes.STRING(255)
     },
     phone: {
       type: DataTypes.STRING(50)
     },
-    mobile: {
-      type: DataTypes.STRING(50)
+    email: {
+      type: DataTypes.STRING(255)
     },
     address: {
       type: DataTypes.TEXT
@@ -37,17 +31,28 @@ module.exports = (sequelize, DataTypes) => {
     city: {
       type: DataTypes.STRING(100)
     },
-    status: {
-      type: DataTypes.ENUM('active', 'inactive', 'suspended'),
-      defaultValue: 'active'
+    country: {
+      type: DataTypes.STRING(100)
     },
-    tenant_id: {
-      type: DataTypes.UUID
+    tax_number: {
+      type: DataTypes.STRING(100)
+    },
+    payment_terms: {
+      type: DataTypes.STRING(255)
+    },
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true
+    },
+    notes: {
+      type: DataTypes.TEXT
     }
   }, {
     tableName: 'suppliers',
     timestamps: true,
-    underscored: true
+    underscored: true,
+    createdAt: 'created_at',
+    updatedAt: false
   });
 
   return Supplier;

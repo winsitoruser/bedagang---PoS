@@ -56,6 +56,14 @@ export function checkRole(context: ApiContext, allowedRoles: string[]): boolean 
 }
 
 /**
+ * Check if user is authorized for specific action
+ * Wrapper around checkRole for consistency with other imports
+ */
+export function isAuthorized(context: ApiContext, allowedRoles: string[]): boolean {
+  return checkRole(context, allowedRoles);
+}
+
+/**
  * Get the current user's information from the request
  * Useful for client-side authentication checks
  */

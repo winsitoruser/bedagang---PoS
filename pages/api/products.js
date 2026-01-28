@@ -7,9 +7,9 @@ export default async function handler(req, res) {
   try {
     switch (method) {
       case 'GET':
-        const { type, search, category } = query;
+        const { type, search, category, page, limit } = query;
         
-        let where = {};
+        let where = { is_active: true };
         
         // Filter by product type
         if (type) {
@@ -29,15 +29,72 @@ export default async function handler(req, res) {
           where.category = category;
         }
         
+        // Pagination
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 10;
+        const offset = (pageNum - 1) * limitNum;
+        
+        // Get total count
+        const totalCount = await Product.count({ where });
+        
+        // Get products with pagination and stock data
         const products = await Product.findAll({
           where,
-          attributes: ['id', 'name', 'sku', 'category', 'price', 'stock', 'unit', 'is_active'],
-          order: [['name', 'ASC']]
+          attributes: [
+            'id', 
+            'name', 
+            'sku', 
+            'category_id',
+            'sell_price',
+            'buy_price',
+            'unit', 
+            'is_active', 
+            'minimum_stock', 
+            'maximum_stock',
+            'reorder_point'
+          ],
+          include: [{
+            model: db.Stock,
+            as: 'stock_data',
+            attributes: ['quantity', 'location_id'],
+            required: false
+          }],
+          order: [['name', 'ASC']],
+          limit: limitNum,
+          offset: offset
+        });
+        
+        // Transform data to match frontend expectations
+        const transformedProducts = products.map(product => {
+          const stockData = product.stock_data || [];
+          const totalStock = stockData.reduce((sum, s) => sum + parseFloat(s.quantity || 0), 0);
+          
+          return {
+            id: product.id,
+            name: product.name,
+            sku: product.sku,
+            category: product.category_id,
+            price: product.sell_price,
+            stock: totalStock,
+            unit: product.unit,
+            is_active: product.is_active,
+            minStock: product.minimum_stock,
+            min_stock: product.minimum_stock,
+            maxStock: product.maximum_stock,
+            max_stock: product.maximum_stock,
+            reorder_point: product.reorder_point,
+            buy_price: product.buy_price,
+            sell_price: product.sell_price
+          };
         });
         
         return res.status(200).json({
           success: true,
-          data: products
+          data: transformedProducts,
+          total: totalCount,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(totalCount / limitNum)
         });
 
       case 'POST':

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { authenticateUser, isAuthorized } from '../../../../middleware/auth';
-import { handleApiError } from '../../../../utils/errorHandler';
+import { authenticateUser, isAuthorized } from '@/lib/auth';
+import { handleApiError } from '@/middleware/error-handler';
 import { IncomeStatement, BalanceSheet, CashFlow, TaxSummary, ReportData } from '../reports';
 
 /**

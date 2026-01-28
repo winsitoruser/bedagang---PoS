@@ -2,6 +2,13 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
+    // Skip if table already exists (duplicate migration)
+    const tables = await queryInterface.showAllTables();
+    if (tables.includes('products')) {
+      console.log('Table products already exists, skipping...');
+      return;
+    }
+    
     await queryInterface.createTable('products', {
       id: {
         type: Sequelize.INTEGER,

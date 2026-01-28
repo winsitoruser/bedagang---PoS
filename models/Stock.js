@@ -1,106 +1,82 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../lib/sequelize');
+'use strict';
 
-const Stock = sequelize.define('Stock', {
+module.exports = (sequelize, DataTypes) => {
+  const Stock = sequelize.define('Stock', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
     primaryKey: true
   },
-  productId: {
-    type: DataTypes.UUID,
+  product_id: {
+    type: DataTypes.INTEGER,
     allowNull: false,
+    field: 'product_id',
     references: {
-      model: 'Products',
+      model: 'products',
       key: 'id'
     }
   },
-  branchId: {
-    type: DataTypes.UUID,
+  location_id: {
+    type: DataTypes.INTEGER,
     allowNull: true,
+    field: 'location_id',
     references: {
-      model: 'Branches',
+      model: 'locations',
       key: 'id'
     }
-  },
-  warehouseLocation: {
-    type: DataTypes.STRING(100),
-    allowNull: true,
-    comment: 'Warehouse bin/location code'
   },
   quantity: {
     type: DataTypes.DECIMAL(15, 2),
     allowNull: false,
-    defaultValue: 0
+    defaultValue: 0,
+    field: 'quantity'
   },
-  reservedQuantity: {
+  reserved_quantity: {
     type: DataTypes.DECIMAL(15, 2),
     allowNull: false,
     defaultValue: 0,
-    comment: 'Quantity reserved for pending orders'
+    field: 'reserved_quantity'
   },
-  availableQuantity: {
-    type: DataTypes.VIRTUAL,
-    get() {
-      return parseFloat(this.quantity) - parseFloat(this.reservedQuantity);
-    }
-  },
-  minimumStock: {
-    type: DataTypes.DECIMAL(15, 2),
-    allowNull: false,
-    defaultValue: 0,
-    comment: 'Minimum stock level for alerts'
-  },
-  maximumStock: {
+  available_quantity: {
     type: DataTypes.DECIMAL(15, 2),
     allowNull: true,
-    comment: 'Maximum stock level'
+    field: 'available_quantity'
   },
-  reorderPoint: {
-    type: DataTypes.DECIMAL(15, 2),
+  batch_number: {
+    type: DataTypes.STRING(100),
     allowNull: true,
-    comment: 'Reorder point for automatic purchase orders'
+    field: 'batch_number'
   },
-  reorderQuantity: {
-    type: DataTypes.DECIMAL(15, 2),
-    allowNull: true,
-    comment: 'Default quantity to reorder'
-  },
-  lastStockCount: {
+  expiry_date: {
     type: DataTypes.DATE,
     allowNull: true,
-    comment: 'Last physical stock count date'
+    field: 'expiry_date'
   },
-  lastRestockDate: {
+  last_stock_take_date: {
     type: DataTypes.DATE,
-    allowNull: true
-  },
-  averageCost: {
-    type: DataTypes.DECIMAL(15, 2),
     allowNull: true,
-    comment: 'Weighted average cost'
+    field: 'last_stock_take_date'
   },
-  totalValue: {
-    type: DataTypes.VIRTUAL,
-    get() {
-      return parseFloat(this.quantity) * parseFloat(this.averageCost || 0);
-    }
+  last_movement_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'last_movement_date'
   }
 }, {
-  tableName: 'stocks',
-  timestamps: true,
-  indexes: [
-    {
-      fields: ['productId', 'branchId'],
-      unique: true
-    },
-    {
-      fields: ['quantity']
-    },
-    {
-      fields: ['minimumStock']
-    }
-  ]
-});
+    tableName: 'inventory_stock',
+    timestamps: true,
+    underscored: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+  });
 
-module.exports = Stock;
+  // Define associations
+  Stock.associate = function(models) {
+    Stock.belongsTo(models.Product, {
+      foreignKey: 'product_id',
+      as: 'product'
+    });
+  };
+
+  return Stock;
+};

@@ -16,82 +16,98 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       unique: true
     },
-    description: {
-      type: DataTypes.TEXT
-    },
-    category: {
-      type: DataTypes.STRING,
-      allowNull: false
-    },
-    categoryColor: {
+    barcode: {
       type: DataTypes.STRING
     },
-    price: {
-      type: DataTypes.DECIMAL(12, 2),
-      allowNull: false
-    },
-    stock: {
+    category_id: {
       type: DataTypes.INTEGER,
-      defaultValue: 0
+      allowNull: true
+    },
+    supplier_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    description: {
+      type: DataTypes.TEXT
     },
     unit: {
       type: DataTypes.STRING
     },
-    location: {
-      type: DataTypes.STRING
+    buy_price: {
+      type: DataTypes.DECIMAL(15, 2),
+      defaultValue: 0
     },
-    expiry: {
-      type: DataTypes.DATE
+    sell_price: {
+      type: DataTypes.DECIMAL(15, 2),
+      defaultValue: 0
     },
-    supplier: {
-      type: DataTypes.STRING
-    },
-    supplierId: {
-      type: DataTypes.UUID
-    },
-    reorderPoint: {
+    minimum_stock: {
       type: DataTypes.INTEGER,
       defaultValue: 0
     },
-    image: {
-      type: DataTypes.STRING
+    maximum_stock: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0
     },
-    isToling: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false
+    reorder_point: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0
     },
-    composition: {
-      type: DataTypes.TEXT
-    },
-    tenantId: {
-      type: DataTypes.UUID
-    },
-    isActive: {
+    is_active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
     },
-    deletedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: null
+    is_trackable: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
     },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW
+    // Virtual fields for backward compatibility
+    price: {
+      type: DataTypes.VIRTUAL,
+      get() {
+        return this.getDataValue('sell_price');
+      },
+      set(value) {
+        this.setDataValue('sell_price', value);
+      }
     },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW
+    stock: {
+      type: DataTypes.VIRTUAL,
+      get() {
+        // Will be populated from inventory_stock relation
+        const stockData = this.getDataValue('stock_data');
+        if (stockData && stockData.length > 0) {
+          return stockData.reduce((sum, s) => sum + parseFloat(s.quantity || 0), 0);
+        }
+        return 0;
+      }
+    },
+    minStock: {
+      type: DataTypes.VIRTUAL,
+      get() {
+        return this.getDataValue('minimum_stock');
+      }
+    },
+    maxStock: {
+      type: DataTypes.VIRTUAL,
+      get() {
+        return this.getDataValue('maximum_stock');
+      }
+    },
+    category: {
+      type: DataTypes.VIRTUAL,
+      get() {
+        return this.getDataValue('category_id');
+      }
     }
   }, {
     tableName: 'products',
     timestamps: true,
-    paranoid: false, // Disable paranoid to avoid deletedAt issues
+    underscored: true,
+    paranoid: false,
     indexes: [
       {
-        fields: ['category']
+        fields: ['category_id']
       },
       {
         fields: ['name']
@@ -104,29 +120,38 @@ module.exports = (sequelize, DataTypes) => {
         }
       },
       {
-        fields: ['supplierId']
+        fields: ['supplier_id']
       },
       {
-        fields: ['tenantId']
-      },
-      {
-        fields: ['isToling']
+        fields: ['is_active']
       }
     ]
   });
 
   Product.associate = function(models) {
     // Relasi dengan TransactionItem
-    Product.hasMany(models.TransactionItem, {
-      foreignKey: 'productId',
-      as: 'transactionItems'
-    });
+    if (models.TransactionItem) {
+      Product.hasMany(models.TransactionItem, {
+        foreignKey: 'productId',
+        as: 'transactionItems'
+      });
+    }
     
     // Relasi dengan Supplier
-    Product.belongsTo(models.Supplier, {
-      foreignKey: 'supplier_id',
-      as: 'supplier'
-    });
+    if (models.Supplier) {
+      Product.belongsTo(models.Supplier, {
+        foreignKey: 'supplier_id',
+        as: 'supplierData'
+      });
+    }
+    
+    // Relasi dengan InventoryStock (PENTING untuk stock data)
+    if (models.Stock) {
+      Product.hasMany(models.Stock, {
+        foreignKey: 'product_id',
+        as: 'stock_data'
+      });
+    }
     
     // Relasi dengan ProductPrice
     if (models.ProductPrice) {

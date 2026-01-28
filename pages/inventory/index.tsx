@@ -35,23 +35,7 @@ const InventoryPage: React.FC = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [totalProducts, setTotalProducts] = useState(0);
   const [activities, setActivities] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/login");
-    }
-  }, [session, status, router]);
-
-  // Fetch stats on mount
-  useEffect(() => {
-    fetchStats();
-    fetchActivities();
-  }, []);
-
-  // Fetch products when page or search changes
-  useEffect(() => {
-    fetchProducts();
-  }, [currentPage, itemsPerPage, searchQuery]);
+  const [liveUpdates, setLiveUpdates] = useState<any[]>([]);
 
   const fetchStats = async () => {
     try {
@@ -101,6 +85,44 @@ const InventoryPage: React.FC = () => {
       console.error('Error fetching activities:', error);
     }
   };
+
+  const fetchLiveUpdates = async () => {
+    try {
+      const response = await fetch('/api/inventory/live-updates');
+      const data = await response.json();
+      if (data.success && data.data) {
+        setLiveUpdates(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching live updates:', error);
+      // Keep existing updates if fetch fails
+    }
+  };
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
+    }
+  }, [session, status, router]);
+
+  // Fetch stats on mount
+  useEffect(() => {
+    fetchStats();
+    fetchActivities();
+    fetchLiveUpdates();
+    
+    // Refresh live updates every 30 seconds
+    const interval = setInterval(() => {
+      fetchLiveUpdates();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch products when page or search changes
+  useEffect(() => {
+    fetchProducts();
+  }, [currentPage, itemsPerPage, searchQuery]);
 
   // Use real stats from API or fallback to loading state
   const statsData = stats || {
@@ -221,39 +243,55 @@ const InventoryPage: React.FC = () => {
             <div className="flex items-center space-x-2">
               <FaExclamationTriangle className="text-white animate-pulse" />
               <span className="text-white font-semibold text-sm">Live Updates</span>
+              <span className="text-xs text-white/80 ml-2">({liveUpdates.length} alerts)</span>
             </div>
           </div>
           <div className="relative overflow-hidden bg-gradient-to-r from-amber-50 to-orange-50 py-3">
-            <div className="animate-marquee whitespace-nowrap">
-              <span className="inline-flex items-center mx-8">
-                <FaExclamationTriangle className="text-red-600 mr-2" />
-                <span className="text-sm font-medium text-gray-900">🚨 <strong>Minyak Goreng 2L</strong> - Stok Kritis (2 unit tersisa)</span>
-              </span>
-              <span className="inline-flex items-center mx-8">
-                <FaExclamationTriangle className="text-yellow-600 mr-2" />
-                <span className="text-sm font-medium text-gray-900">⚠️ <strong>Teh Hijau Organik</strong> - Stok Rendah (8 unit)</span>
-              </span>
-              <span className="inline-flex items-center mx-8">
-                <FaExclamationTriangle className="text-red-600 mr-2" />
-                <span className="text-sm font-medium text-gray-900">❌ <strong>Susu UHT 1L</strong> - Stok Habis (Segera restock!)</span>
-              </span>
-              <span className="inline-flex items-center mx-8">
-                <FaExclamationTriangle className="text-yellow-600 mr-2" />
-                <span className="text-sm font-medium text-gray-900">⚠️ <strong>Roti Tawar</strong> - Stok Rendah (5 unit)</span>
-              </span>
-              <span className="inline-flex items-center mx-8">
-                <FaChartLine className="text-green-600 mr-2" />
-                <span className="text-sm font-medium text-gray-900">📊 <strong>Kopi Arabica Premium</strong> - Penjualan meningkat 25% minggu ini</span>
-              </span>
-              <span className="inline-flex items-center mx-8">
-                <FaTruck className="text-blue-600 mr-2" />
-                <span className="text-sm font-medium text-gray-900">🚚 <strong>Purchase Order #PO-2024-015</strong> - Dalam pengiriman (estimasi tiba besok)</span>
-              </span>
-              <span className="inline-flex items-center mx-8">
-                <FaExclamationTriangle className="text-yellow-600 mr-2" />
-                <span className="text-sm font-medium text-gray-900">⏰ <strong>Telur Ayam 1kg</strong> - Mendekati tanggal kadaluarsa (3 hari lagi)</span>
-              </span>
-            </div>
+            {liveUpdates.length === 0 ? (
+              <div className="text-center py-2">
+                <span className="text-sm text-gray-600">Memuat live updates...</span>
+              </div>
+            ) : (
+              <div className="animate-marquee whitespace-nowrap">
+                {liveUpdates.map((update, index) => {
+                  const iconColor = update.severity === 'critical' ? 'text-red-600' : 
+                                   update.severity === 'warning' ? 'text-yellow-600' : 
+                                   update.severity === 'info' ? 'text-green-600' : 'text-blue-600';
+                  
+                  const Icon = update.type === 'fast_moving' ? FaChartLine :
+                              update.type === 'purchase_suggestion' ? FaTruck :
+                              FaExclamationTriangle;
+                  
+                  return (
+                    <span key={index} className="inline-flex items-center mx-8">
+                      <Icon className={`${iconColor} mr-2`} />
+                      <span className="text-sm font-medium text-gray-900">
+                        {update.icon} {update.message}
+                      </span>
+                    </span>
+                  );
+                })}
+                {/* Duplicate for seamless loop */}
+                {liveUpdates.map((update, index) => {
+                  const iconColor = update.severity === 'critical' ? 'text-red-600' : 
+                                   update.severity === 'warning' ? 'text-yellow-600' : 
+                                   update.severity === 'info' ? 'text-green-600' : 'text-blue-600';
+                  
+                  const Icon = update.type === 'fast_moving' ? FaChartLine :
+                              update.type === 'purchase_suggestion' ? FaTruck :
+                              FaExclamationTriangle;
+                  
+                  return (
+                    <span key={`dup-${index}`} className="inline-flex items-center mx-8">
+                      <Icon className={`${iconColor} mr-2`} />
+                      <span className="text-sm font-medium text-gray-900">
+                        {update.icon} {update.message}
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

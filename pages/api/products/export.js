@@ -1,7 +1,9 @@
 const db = require('../../../models');
 const { Product, Supplier } = db;
 const ExcelJS = require('exceljs');
-const PDFDocument = require('pdfkit');
+
+// PDFDocument will be loaded dynamically when needed
+// This avoids webpack trying to bundle it at build time
 
 /**
  * POST /api/products/export
@@ -154,7 +156,10 @@ async function exportToExcel(products, fields, res) {
 
 // Export to PDF
 async function exportToPDF(products, fields, res) {
-  const doc = new PDFDocument({ margin: 50 });
+  try {
+    // Dynamic import to avoid webpack bundling at build time
+    const PDFDocument = (await import('pdfkit')).default;
+    const doc = new PDFDocument({ margin: 50 });
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename=products_${Date.now()}.pdf`);
@@ -211,6 +216,13 @@ async function exportToPDF(products, fields, res) {
   });
 
   doc.end();
+  } catch (error) {
+    console.error('PDF export error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'PDF export is not available. Please install pdfkit package.'
+    });
+  }
 }
 
 // Export to CSV

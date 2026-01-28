@@ -1,5 +1,5 @@
 const db = require('../../../models');
-const { Product, Supplier } = db;
+const { Product, Supplier, Stock } = db;
 
 /**
  * GET /api/inventory/stats
@@ -20,55 +20,61 @@ export default async function handler(req, res) {
       paranoid: false
     });
 
-    // Get total inventory value
+    // Get total inventory value with JOIN to stocks table
     const products = await Product.findAll({
       where: { is_active: true },
-      attributes: ['price', 'stock', 'cost', 'purchase_price'],
+      attributes: ['id', 'sell_price', 'buy_price'],
+      include: [{
+        model: db.Stock,
+        as: 'stock_data',
+        attributes: ['quantity'],
+        required: false
+      }],
       paranoid: false
     });
 
     const totalValue = products.reduce((sum, product) => {
-      const costValue = parseFloat(product.cost) || parseFloat(product.purchase_price) || parseFloat(product.price);
-      const value = costValue * parseFloat(product.stock || 0);
+      const stockData = product.stock_data || [];
+      const totalQuantity = stockData.reduce((q, s) => q + parseFloat(s.quantity || 0), 0);
+      const costValue = parseFloat(product.buy_price) || parseFloat(product.sell_price) || 0;
+      const value = costValue * totalQuantity;
       return sum + value;
     }, 0);
 
-    // Get low stock count
-    const lowStockProducts = await Product.count({
-      where: {
-        is_active: true,
-        [db.Sequelize.Op.and]: [
-          db.Sequelize.where(
-            db.Sequelize.col('stock'),
-            '<=',
-            db.Sequelize.col('min_stock')
-          ),
-          {
-            stock: {
-              [db.Sequelize.Op.gt]: 0
-            }
-          }
-        ]
-      },
-      paranoid: false
-    });
+    // Get low stock count from stocks table
+    const lowStockResult = await db.sequelize.query(`
+      SELECT COUNT(DISTINCT p.id) as count
+      FROM products p
+      INNER JOIN inventory_stock s ON s.product_id = p.id
+      WHERE p.is_active = true 
+      AND s.quantity <= p.minimum_stock 
+      AND s.quantity > 0
+    `, { type: db.Sequelize.QueryTypes.SELECT });
+    
+    const lowStockProducts = parseInt(lowStockResult[0]?.count || 0);
 
-    // Get out of stock count
-    const outOfStockProducts = await Product.count({
+    // Get out of stock count from stocks table
+    const outOfStockProducts = await Stock.count({
       where: {
-        is_active: true,
-        stock: 0
+        quantity: 0
       },
-      paranoid: false
+      include: [{
+        model: Product,
+        as: 'product',
+        where: { is_active: true },
+        attributes: [],
+        required: true
+      }]
     });
 
     // Get categories count
-    const categories = await Product.findAll({
-      where: { is_active: true },
-      attributes: [[db.Sequelize.fn('DISTINCT', db.Sequelize.col('category')), 'category']],
-      raw: true,
-      paranoid: false
-    });
+    const categoriesResult = await db.sequelize.query(`
+      SELECT COUNT(DISTINCT category_id) as count
+      FROM products
+      WHERE is_active = true AND category_id IS NOT NULL
+    `, { type: db.Sequelize.QueryTypes.SELECT });
+    
+    const categoriesCount = parseInt(categoriesResult[0]?.count || 0);
 
     // Get suppliers count
     const suppliersCount = await Supplier.count({
@@ -101,13 +107,21 @@ export default async function handler(req, res) {
           [db.Sequelize.Op.between]: [sixtyDaysAgo, thirtyDaysAgo]
         }
       },
-      attributes: ['price', 'stock', 'cost', 'purchase_price'],
+      attributes: ['id', 'sell_price', 'buy_price'],
+      include: [{
+        model: db.Stock,
+        as: 'stock_data',
+        attributes: ['quantity'],
+        required: false
+      }],
       paranoid: false
     });
 
     const previousValue = previousMonthProducts.reduce((sum, product) => {
-      const costValue = parseFloat(product.cost) || parseFloat(product.purchase_price) || parseFloat(product.price);
-      const value = costValue * parseFloat(product.stock || 0);
+      const stockData = product.stock_data || [];
+      const totalQuantity = stockData.reduce((q, s) => q + parseFloat(s.quantity || 0), 0);
+      const costValue = parseFloat(product.buy_price) || parseFloat(product.sell_price) || 0;
+      const value = costValue * totalQuantity;
       return sum + value;
     }, 0);
 
@@ -120,9 +134,9 @@ export default async function handler(req, res) {
       data: {
         totalProducts,
         totalValue: Math.round(totalValue),
-        lowStock: lowStockProducts,
+        lowStockProducts,
         outOfStock: outOfStockProducts,
-        categories: categories.length,
+        categories: categoriesCount,
         suppliers: suppliersCount,
         recentChanges: {
           products: recentProducts,
