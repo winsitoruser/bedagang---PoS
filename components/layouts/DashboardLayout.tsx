@@ -15,7 +15,9 @@ import {
   X,
   Wallet,
   Ticket,
-  Award
+  Award,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -26,6 +28,22 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { data: session } = useSession();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+
+  // Load collapsed state from localStorage
+  React.useEffect(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    if (saved !== null) {
+      setSidebarCollapsed(saved === 'true');
+    }
+  }, []);
+
+  // Save collapsed state to localStorage
+  const toggleSidebarCollapse = () => {
+    const newState = !sidebarCollapsed;
+    setSidebarCollapsed(newState);
+    localStorage.setItem('sidebarCollapsed', String(newState));
+  };
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
@@ -48,17 +66,23 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-50 bg-white border-r border-gray-200 transform transition-all duration-300 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}
+        } lg:translate-x-0 ${
+          sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
+        } w-64`}
       >
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-sky-500 to-blue-600 rounded-lg flex items-center justify-center">
+          <Link href="/dashboard" className={`flex items-center space-x-2 transition-all ${
+            sidebarCollapsed ? 'lg:justify-center lg:w-full' : ''
+          }`}>
+            <div className="w-8 h-8 bg-gradient-to-br from-sky-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
               <Store className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-blue-600">
+            <span className={`text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-blue-600 transition-all ${
+              sidebarCollapsed ? 'lg:hidden' : ''
+            }`}>
               BEDAGANG
             </span>
           </Link>
@@ -71,7 +95,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = router.pathname === item.href;
@@ -79,14 +103,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all group relative ${
                   isActive
                     ? 'bg-sky-50 text-sky-600 font-medium'
                     : 'text-gray-700 hover:bg-gray-50'
+                } ${
+                  sidebarCollapsed ? 'lg:justify-center lg:px-0' : ''
                 }`}
+                title={sidebarCollapsed ? item.label : ''}
               >
-                <Icon className="w-5 h-5" />
-                <span>{item.label}</span>
+                <Icon className={`w-5 h-5 flex-shrink-0 ${
+                  sidebarCollapsed ? 'lg:mx-auto' : ''
+                }`} />
+                <span className={`transition-all ${
+                  sidebarCollapsed ? 'lg:hidden' : ''
+                }`}>{item.label}</span>
+                
+                {/* Tooltip for collapsed state */}
+                {sidebarCollapsed && (
+                  <div className="hidden lg:block absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                    {item.label}
+                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
+                  </div>
+                )}
               </Link>
             );
           })}
@@ -94,11 +133,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
         {/* User Info & Logout */}
         <div className="border-t border-gray-200 p-4">
-          <div className="flex items-center space-x-3 mb-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-sky-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+          <div className={`flex items-center space-x-3 mb-3 ${
+            sidebarCollapsed ? 'lg:justify-center' : ''
+          }`}>
+            <div className="w-10 h-10 bg-gradient-to-br from-sky-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
               {session?.user?.name?.charAt(0) || 'U'}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className={`flex-1 min-w-0 transition-all ${
+              sidebarCollapsed ? 'lg:hidden' : ''
+            }`}>
               <p className="text-sm font-medium text-gray-900 truncate">
                 {session?.user?.name || 'User'}
               </p>
@@ -109,16 +152,48 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className={`flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-all group relative ${
+              sidebarCollapsed ? 'lg:justify-center lg:px-0' : ''
+            }`}
+            title={sidebarCollapsed ? 'Logout' : ''}
           >
-            <LogOut className="w-4 h-4" />
-            <span>Logout</span>
+            <LogOut className={`w-4 h-4 flex-shrink-0 ${
+              sidebarCollapsed ? 'lg:mx-auto' : ''
+            }`} />
+            <span className={`transition-all ${
+              sidebarCollapsed ? 'lg:hidden' : ''
+            }`}>Logout</span>
+            
+            {/* Tooltip for collapsed state */}
+            {sidebarCollapsed && (
+              <div className="hidden lg:block absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                Logout
+                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
+              </div>
+            )}
           </button>
         </div>
       </aside>
 
+      {/* Collapse Toggle Button - Desktop Only */}
+      <button
+        onClick={toggleSidebarCollapse}
+        className={`hidden lg:flex fixed top-20 z-50 items-center justify-center w-8 h-8 bg-white border border-gray-200 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 ${
+          sidebarCollapsed ? 'left-16' : 'left-60'
+        }`}
+        title={sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+      >
+        {sidebarCollapsed ? (
+          <ChevronRight className="w-4 h-4 text-gray-600" />
+        ) : (
+          <ChevronLeft className="w-4 h-4 text-gray-600" />
+        )}
+      </button>
+
       {/* Main Content */}
-      <div className="lg:pl-64">
+      <div className={`transition-all duration-300 ${
+        sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+      }`}>
         {/* Top Bar */}
         <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
           <div className="flex items-center justify-between h-16 px-6">

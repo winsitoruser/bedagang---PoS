@@ -6,7 +6,7 @@ import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { 
   FaShoppingCart, FaPlus, FaMinus, FaTrash, FaBarcode, 
   FaSearch, FaCreditCard, FaMoneyBillWave, FaReceipt,
-  FaTimes, FaCheck
+  FaTimes, FaCheck, FaCashRegister, FaBox, FaTag, FaQrcode
 } from 'react-icons/fa';
 
 interface CartItem {
@@ -23,7 +23,7 @@ const CashierPage: React.FC = () => {
   
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'qris'>('cash');
   const [cashReceived, setCashReceived] = useState<string>('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
@@ -137,234 +137,346 @@ const CashierPage: React.FC = () => {
         <title>Kasir | BEDAGANG Cloud POS</title>
       </Head>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-120px)]">
+      {/* Professional Header */}
+      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 rounded-2xl shadow-lg p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="bg-white/20 backdrop-blur-sm p-4 rounded-xl">
+              <FaCashRegister className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-1">Point of Sale</h1>
+              <p className="text-white/80 text-sm">Sistem Kasir Professional</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-white/80 text-sm mb-1">Kasir</p>
+            <p className="text-white font-semibold">{session?.user?.name || 'Admin'}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Products Section */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Search Bar */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          {/* Professional Search Bar */}
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border-2 border-indigo-100 p-5">
             <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-indigo-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Cari produk atau scan barcode..."
+                placeholder="🔍 Cari produk atau scan barcode..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                className="w-full pl-12 pr-14 py-4 border-2 border-indigo-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all text-base font-medium placeholder:text-gray-400"
               />
-              <FaBarcode className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl cursor-pointer hover:text-sky-600" />
+              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-indigo-100 p-2 rounded-lg cursor-pointer hover:bg-indigo-200 transition-all">
+                <FaBarcode className="text-indigo-600 w-5 h-5" />
+              </div>
             </div>
           </div>
 
-          {/* Products Grid */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 250px)' }}>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Produk</h2>
+          {/* Professional Products Grid */}
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border-2 border-indigo-100 p-5 overflow-y-auto" style={{ height: 'calc(100vh - 320px)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-lg">
+                  <FaBox className="w-5 h-5 text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">Katalog Produk</h2>
+              </div>
+              <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-semibold">
+                {filteredProducts.length} items
+              </span>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
               {filteredProducts.map((product) => (
                 <button
                   key={product.id}
                   onClick={() => addToCart(product)}
-                  className="bg-white border-2 border-gray-200 rounded-lg p-3 hover:border-sky-500 hover:shadow-md transition-all text-left"
+                  className="group bg-white border-2 border-gray-200 rounded-xl p-3 hover:border-indigo-400 hover:shadow-xl transition-all duration-300 text-left transform hover:-translate-y-1"
                 >
-                  <div className="aspect-square bg-gradient-to-br from-sky-100 to-blue-100 rounded-lg mb-2 flex items-center justify-center">
-                    <FaShoppingCart className="w-8 h-8 text-sky-600" />
+                  <div className="aspect-square bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 rounded-lg mb-2 flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 group-hover:scale-110 transition-transform duration-300"></div>
+                    <FaBox className="w-8 h-8 text-indigo-600 relative z-10 group-hover:scale-110 transition-transform" />
                   </div>
-                  <h3 className="font-semibold text-sm text-gray-900 mb-1 line-clamp-2">
-                    {product.name}
-                  </h3>
-                  <p className="text-sky-600 font-bold text-sm mb-1">
-                    Rp {product.price.toLocaleString('id-ID')}
-                  </p>
-                  <p className="text-xs text-gray-500">Stok: {product.stock}</p>
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-xs text-gray-900 line-clamp-2 group-hover:text-indigo-600 transition-colors leading-tight">
+                      {product.name}
+                    </h3>
+                    <div>
+                      <p className="text-indigo-600 font-bold text-sm">
+                        Rp {product.price.toLocaleString('id-ID')}
+                      </p>
+                      <p className="text-xs text-gray-500 flex items-center mt-0.5">
+                        <span className={`w-1.5 h-1.5 rounded-full mr-1 ${product.stock > 20 ? 'bg-green-500' : product.stock > 10 ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
+                        Stok: {product.stock}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-gray-100">
+                    <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                      {product.category}
+                    </span>
+                  </div>
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Cart Section */}
+        {/* Professional Cart Section */}
         <div className="space-y-4">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
+          <div className="bg-gradient-to-br from-white to-indigo-50 rounded-2xl shadow-xl border-2 border-indigo-200 p-5 flex flex-col" style={{ height: 'calc(100vh - 250px)' }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">Keranjang</h2>
+              <div className="flex items-center space-x-3">
+                <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-2 rounded-lg">
+                  <FaShoppingCart className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Keranjang Belanja</h2>
+                  <p className="text-xs text-gray-500">{cart.length} item dipilih</p>
+                </div>
+              </div>
               {cart.length > 0 && (
                 <button
                   onClick={clearCart}
-                  className="text-red-600 hover:text-red-700 text-sm font-medium"
+                  className="bg-red-100 text-red-600 hover:bg-red-200 px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center space-x-1"
                 >
-                  Hapus Semua
+                  <FaTrash className="w-3 h-3" />
+                  <span>Hapus</span>
                 </button>
               )}
             </div>
 
-            {/* Cart Items */}
-            <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+            {/* Professional Cart Items */}
+            <div className="flex-1 overflow-y-auto space-y-3 mb-4">
               {cart.length === 0 ? (
                 <div className="text-center py-12">
-                  <FaShoppingCart className="w-16 h-16 mx-auto text-gray-300 mb-3" />
-                  <p className="text-gray-500">Keranjang kosong</p>
+                  <div className="bg-gradient-to-br from-gray-100 to-gray-200 w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center">
+                    <FaShoppingCart className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 font-medium">Keranjang Masih Kosong</p>
+                  <p className="text-gray-400 text-sm mt-1">Pilih produk untuk memulai transaksi</p>
                 </div>
               ) : (
                 cart.map((item) => (
-                  <div key={item.id} className="bg-gray-50 rounded-lg p-3">
+                  <div key={item.id} className="bg-white rounded-lg p-3 shadow-md border-2 border-indigo-100 hover:border-indigo-300 transition-all">
                     <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-medium text-sm text-gray-900 flex-1">
-                        {item.name}
-                      </h3>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-sm text-gray-900 leading-tight line-clamp-1">
+                          {item.name}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Rp {item.price.toLocaleString('id-ID')}
+                        </p>
+                      </div>
                       <button
                         onClick={() => removeFromCart(item.id)}
-                        className="text-red-600 hover:text-red-700 ml-2"
+                        className="bg-red-100 text-red-600 hover:bg-red-200 p-1.5 rounded-lg transition-all ml-2"
                       >
                         <FaTrash className="w-3 h-3" />
                       </button>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1.5 bg-indigo-50 rounded-lg p-1">
                         <button
                           onClick={() => updateQuantity(item.id, -1)}
-                          className="w-7 h-7 bg-white border border-gray-300 rounded flex items-center justify-center hover:bg-gray-100"
+                          className="w-7 h-7 bg-white border-2 border-indigo-200 rounded-lg flex items-center justify-center hover:bg-indigo-100 transition-all"
                         >
-                          <FaMinus className="w-3 h-3 text-gray-600" />
+                          <FaMinus className="w-2.5 h-2.5 text-indigo-600" />
                         </button>
-                        <span className="w-8 text-center font-medium text-sm">
+                        <span className="w-8 text-center font-bold text-sm text-indigo-600">
                           {item.quantity}
                         </span>
                         <button
                           onClick={() => updateQuantity(item.id, 1)}
-                          className="w-7 h-7 bg-white border border-gray-300 rounded flex items-center justify-center hover:bg-gray-100"
+                          className="w-7 h-7 bg-white border-2 border-indigo-200 rounded-lg flex items-center justify-center hover:bg-indigo-100 transition-all"
                         >
-                          <FaPlus className="w-3 h-3 text-gray-600" />
+                          <FaPlus className="w-2.5 h-2.5 text-indigo-600" />
                         </button>
                       </div>
-                      <p className="font-bold text-sm text-sky-600">
-                        Rp {(item.price * item.quantity).toLocaleString('id-ID')}
-                      </p>
+                      <div className="text-right">
+                        <p className="font-bold text-sm text-indigo-600">
+                          Rp {(item.price * item.quantity).toLocaleString('id-ID')}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))
               )}
             </div>
 
-            {/* Total */}
-            <div className="border-t border-gray-200 pt-4 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="font-semibold">Rp {total.toLocaleString('id-ID')}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Pajak (0%)</span>
-                <span className="font-semibold">Rp 0</span>
-              </div>
-              <div className="flex justify-between items-center text-lg font-bold border-t border-gray-200 pt-3">
-                <span>Total</span>
-                <span className="text-sky-600">Rp {total.toLocaleString('id-ID')}</span>
+            {/* Professional Total Section */}
+            <div className="border-t-2 border-indigo-200 pt-4 space-y-3">
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-3 space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 font-medium">Subtotal</span>
+                  <span className="font-bold text-gray-900">Rp {total.toLocaleString('id-ID')}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 font-medium">Pajak (0%)</span>
+                  <span className="font-bold text-gray-900">Rp 0</span>
+                </div>
+                <div className="flex justify-between items-center pt-3 border-t-2 border-indigo-200">
+                  <span className="text-lg font-bold text-gray-900">TOTAL</span>
+                  <span className="text-2xl font-bold text-indigo-600">Rp {total.toLocaleString('id-ID')}</span>
+                </div>
               </div>
               <button
                 onClick={handleCheckout}
                 disabled={cart.length === 0}
-                className="w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white py-3 rounded-lg font-semibold hover:from-sky-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white py-4 rounded-xl font-bold text-lg hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"
               >
-                Bayar Sekarang
+                <FaCreditCard className="w-5 h-5" />
+                <span>Bayar Sekarang</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Payment Modal */}
+      {/* Professional Payment Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 transform transition-all animate-slideUp">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Pembayaran</h2>
+              <div className="flex items-center space-x-3">
+                <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-3 rounded-xl">
+                  <FaReceipt className="w-6 h-6 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900">Pembayaran</h2>
+              </div>
               <button
                 onClick={() => setShowPaymentModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="bg-gray-100 hover:bg-gray-200 p-2 rounded-xl transition-all"
               >
-                <FaTimes className="w-6 h-6" />
+                <FaTimes className="w-6 h-6 text-gray-600" />
               </button>
             </div>
 
-            {/* Total */}
-            <div className="bg-gradient-to-r from-sky-500 to-blue-600 rounded-xl p-6 mb-6 text-white">
-              <p className="text-sm opacity-90 mb-1">Total Pembayaran</p>
-              <p className="text-3xl font-bold">Rp {total.toLocaleString('id-ID')}</p>
+            {/* Professional Total Display */}
+            <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-2xl p-8 mb-6 text-white shadow-xl">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm opacity-90 font-medium">Total Pembayaran</p>
+                <FaTag className="w-5 h-5 opacity-75" />
+              </div>
+              <p className="text-4xl font-bold mb-1">Rp {total.toLocaleString('id-ID')}</p>
+              <p className="text-sm opacity-75">{cart.length} item dalam keranjang</p>
             </div>
 
-            {/* Payment Method */}
+            {/* Professional Payment Method */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Metode Pembayaran
+              <label className="block text-base font-bold text-gray-900 mb-4">
+                Pilih Metode Pembayaran
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <button
                   onClick={() => setPaymentMethod('cash')}
-                  className={`p-4 border-2 rounded-lg flex flex-col items-center justify-center transition-all ${
+                  className={`p-5 border-3 rounded-2xl flex flex-col items-center justify-center transition-all transform hover:scale-105 ${
                     paymentMethod === 'cash'
-                      ? 'border-sky-500 bg-sky-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
                   }`}
                 >
-                  <FaMoneyBillWave className={`w-8 h-8 mb-2 ${paymentMethod === 'cash' ? 'text-sky-600' : 'text-gray-400'}`} />
-                  <span className={`font-medium ${paymentMethod === 'cash' ? 'text-sky-600' : 'text-gray-600'}`}>
+                  <div className={`p-3 rounded-xl mb-2 ${
+                    paymentMethod === 'cash' ? 'bg-green-500' : 'bg-gray-200'
+                  }`}>
+                    <FaMoneyBillWave className={`w-7 h-7 ${paymentMethod === 'cash' ? 'text-white' : 'text-gray-400'}`} />
+                  </div>
+                  <span className={`font-bold text-sm ${paymentMethod === 'cash' ? 'text-green-600' : 'text-gray-600'}`}>
                     Tunai
                   </span>
                 </button>
                 <button
                   onClick={() => setPaymentMethod('card')}
-                  className={`p-4 border-2 rounded-lg flex flex-col items-center justify-center transition-all ${
+                  className={`p-5 border-3 rounded-2xl flex flex-col items-center justify-center transition-all transform hover:scale-105 ${
                     paymentMethod === 'card'
-                      ? 'border-sky-500 bg-sky-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-purple-50 shadow-lg'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
                   }`}
                 >
-                  <FaCreditCard className={`w-8 h-8 mb-2 ${paymentMethod === 'card' ? 'text-sky-600' : 'text-gray-400'}`} />
-                  <span className={`font-medium ${paymentMethod === 'card' ? 'text-sky-600' : 'text-gray-600'}`}>
+                  <div className={`p-3 rounded-xl mb-2 ${
+                    paymentMethod === 'card' ? 'bg-indigo-500' : 'bg-gray-200'
+                  }`}>
+                    <FaCreditCard className={`w-7 h-7 ${paymentMethod === 'card' ? 'text-white' : 'text-gray-400'}`} />
+                  </div>
+                  <span className={`font-bold text-sm ${paymentMethod === 'card' ? 'text-indigo-600' : 'text-gray-600'}`}>
                     Kartu
+                  </span>
+                </button>
+                <button
+                  onClick={() => setPaymentMethod('qris')}
+                  className={`p-5 border-3 rounded-2xl flex flex-col items-center justify-center transition-all transform hover:scale-105 ${
+                    paymentMethod === 'qris'
+                      ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+                >
+                  <div className={`p-3 rounded-xl mb-2 ${
+                    paymentMethod === 'qris' ? 'bg-blue-500' : 'bg-gray-200'
+                  }`}>
+                    <FaQrcode className={`w-7 h-7 ${paymentMethod === 'qris' ? 'text-white' : 'text-gray-400'}`} />
+                  </div>
+                  <span className={`font-bold text-sm ${paymentMethod === 'qris' ? 'text-blue-600' : 'text-gray-600'}`}>
+                    QRIS
                   </span>
                 </button>
               </div>
             </div>
 
-            {/* Cash Input */}
+            {/* Professional Cash Input */}
             {paymentMethod === 'cash' && (
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Uang Diterima
+                <label className="block text-base font-bold text-gray-900 mb-3">
+                  💵 Uang Diterima
                 </label>
-                <input
-                  type="number"
-                  value={cashReceived}
-                  onChange={(e) => setCashReceived(e.target.value)}
-                  placeholder="0"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent text-lg"
-                />
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-bold text-lg">Rp</span>
+                  <input
+                    type="number"
+                    value={cashReceived}
+                    onChange={(e) => setCashReceived(e.target.value)}
+                    placeholder="0"
+                    className="w-full pl-12 pr-4 py-4 border-2 border-green-300 rounded-xl focus:ring-4 focus:ring-green-200 focus:border-green-500 text-xl font-bold text-gray-900 transition-all"
+                  />
+                </div>
                 {cashReceived && (
-                  <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                  <div className={`mt-4 p-5 rounded-xl border-2 ${
+                    calculateChange() >= 0 
+                      ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300' 
+                      : 'bg-gradient-to-br from-red-50 to-pink-50 border-red-300'
+                  }`}>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Kembalian</span>
-                      <span className={`font-bold text-lg ${calculateChange() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className="text-gray-700 font-bold">Kembalian</span>
+                      <span className={`font-bold text-2xl ${
+                        calculateChange() >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
                         Rp {Math.abs(calculateChange()).toLocaleString('id-ID')}
                       </span>
                     </div>
+                    {calculateChange() < 0 && (
+                      <p className="text-red-600 text-sm mt-2 font-medium">⚠️ Uang kurang!</p>
+                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="flex space-x-3">
+            {/* Professional Action Buttons */}
+            <div className="flex space-x-4">
               <button
                 onClick={() => setShowPaymentModal(false)}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all"
+                className="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition-all text-base"
               >
                 Batal
               </button>
               <button
                 onClick={processPayment}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition-all flex items-center justify-center"
+                className="flex-1 px-6 py-4 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white rounded-xl font-bold hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-base"
               >
-                <FaCheck className="mr-2" />
-                Proses
+                <FaCheck className="w-5 h-5" />
+                <span>Proses Pembayaran</span>
               </button>
             </div>
           </div>
