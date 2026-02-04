@@ -17,8 +17,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { period = '7d' } = req.query;
 
     // Dynamic imports
-    const Transaction = require('@/models/Transaction');
-    const TransactionItem = require('@/models/TransactionItem');
+    const PosTransaction = require('@/models/PosTransaction');
+    const PosTransactionItem = require('@/models/PosTransactionItem');
     const Product = require('@/models/Product');
 
     // Calculate date range based on period
@@ -64,32 +64,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
       // 1. TODAY'S STATS
-      const todayTransactions = await Transaction.findAll({
+      const todayTransactions = await PosTransaction.findAll({
         where: {
-          createdAt: {
+          transactionDate: {
             [Op.between]: [startOfToday, today]
           },
-          status: { [Op.in]: ['completed', 'paid'] }
+          status: 'completed'
         },
-        attributes: ['id', 'totalAmount', 'paymentMethod']
+        attributes: ['id', 'total', 'paymentMethod']
       });
 
       const todayStats = {
         transactions: todayTransactions.length,
-        sales: todayTransactions.reduce((sum: number, t: any) => sum + parseFloat(t.totalAmount || 0), 0),
+        sales: todayTransactions.reduce((sum: number, t: any) => sum + parseFloat(t.total || 0), 0),
         items: 0,
         avgTransaction: 0
       };
 
       // Get items count for today
-      const todayItems = await TransactionItem.findAll({
+      const todayItems = await PosTransactionItem.findAll({
         include: [{
-          model: Transaction,
+          model: PosTransaction,
           where: {
-            createdAt: {
+            transactionDate: {
               [Op.between]: [startOfToday, today]
             },
-            status: { [Op.in]: ['completed', 'paid'] }
+            status: 'completed'
           },
           attributes: []
         }],
@@ -102,19 +102,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         : 0;
 
       // 2. YESTERDAY'S STATS FOR COMPARISON
-      const yesterdayTransactions = await Transaction.findAll({
+      const yesterdayTransactions = await PosTransaction.findAll({
         where: {
-          createdAt: {
+          transactionDate: {
             [Op.between]: [yesterday, endOfYesterday]
           },
-          status: { [Op.in]: ['completed', 'paid'] }
+          status: 'completed'
         },
-        attributes: ['id', 'totalAmount']
+        attributes: ['id', 'total']
       });
 
       const yesterdayStats = {
         transactions: yesterdayTransactions.length,
-        sales: yesterdayTransactions.reduce((sum: number, t: any) => sum + parseFloat(t.totalAmount || 0), 0)
+        sales: yesterdayTransactions.reduce((sum: number, t: any) => sum + parseFloat(t.total || 0), 0)
       };
 
       // Calculate percentage changes
@@ -138,20 +138,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         nextDate.setDate(nextDate.getDate() + 1);
         nextDate.setHours(0, 0, 0, 0);
 
-        const dayTransactions = await Transaction.findAll({
+        const dayTransactions = await PosTransaction.findAll({
           where: {
-            createdAt: {
+            transactionDate: {
               [Op.between]: [date, nextDate]
             },
-            status: { [Op.in]: ['completed', 'paid'] }
+            status: 'completed'
           },
-          attributes: ['id', 'totalAmount']
+          attributes: ['id', 'total']
         });
 
         salesTrend.push({
           date: date.toISOString().split('T')[0],
           transactions: dayTransactions.length,
-          sales: dayTransactions.reduce((sum: number, t: any) => sum + parseFloat(t.totalAmount || 0), 0)
+          sales: dayTransactions.reduce((sum: number, t: any) => sum + parseFloat(t.total || 0), 0)
         });
       }
 
@@ -160,14 +160,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       last30Days.setDate(today.getDate() - 30);
       last30Days.setHours(0, 0, 0, 0);
 
-      const paymentMethodsData = await Transaction.findAll({
+      const paymentMethodsData = await PosTransaction.findAll({
         where: {
-          createdAt: {
+          transactionDate: {
             [Op.between]: [last30Days, today]
           },
-          status: { [Op.in]: ['completed', 'paid'] }
+          status: 'completed'
         },
-        attributes: ['paymentMethod', 'totalAmount']
+        attributes: ['paymentMethod', 'total']
       });
 
       // Group by payment method
@@ -179,7 +179,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         const current = paymentMethodsMap.get(method);
         current.count += 1;
-        current.total += parseFloat(t.totalAmount || 0);
+        current.total += parseFloat(t.total || 0);
       });
 
       const paymentMethods = Array.from(paymentMethodsMap.entries()).map(([method, data]) => ({
@@ -193,35 +193,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       last7Days.setDate(today.getDate() - 7);
       last7Days.setHours(0, 0, 0, 0);
 
-      const topProductsData = await TransactionItem.findAll({
+      const topProductsData = await PosTransactionItem.findAll({
         include: [
           {
-            model: Transaction,
+            model: PosTransaction,
+            as: 'transaction',
             where: {
-              createdAt: {
+              transactionDate: {
                 [Op.between]: [last7Days, today]
               },
-              status: { [Op.in]: ['completed', 'paid'] }
+              status: 'completed'
             },
             attributes: []
           },
           {
             model: Product,
+            as: 'product',
             attributes: ['name']
           }
         ],
         attributes: [
           'productId',
           [require('sequelize').fn('SUM', require('sequelize').col('quantity')), 'totalQuantity'],
-          [require('sequelize').fn('SUM', require('sequelize').literal('quantity * price')), 'totalSales']
+          [require('sequelize').fn('SUM', require('sequelize').literal('quantity * unitPrice')), 'totalSales']
         ],
-        group: ['productId', 'Product.id', 'Product.name'],
+        group: ['PosTransactionItem.productId', 'product.id', 'product.name'],
         order: [[require('sequelize').literal('totalSales'), 'DESC']],
-        limit: 5
+        limit: 5,
+        raw: false,
+        subQuery: false
       });
 
       const topProducts = topProductsData.map((item: any) => ({
-        name: item.Product?.name || 'Unknown Product',
+        name: item.product?.name || item.productName || 'Unknown Product',
         quantity: parseInt(item.get('totalQuantity') || 0),
         sales: parseFloat(item.get('totalSales') || 0)
       }));
