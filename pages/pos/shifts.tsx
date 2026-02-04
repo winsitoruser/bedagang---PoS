@@ -27,8 +27,15 @@ const ShiftsPage: React.FC = () => {
   const [filters, setFilters] = useState({
     status: 'all',
     dateFrom: '',
-    dateTo: ''
+    dateTo: '',
+    cashier: ''
   });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0
+  });
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -42,21 +49,25 @@ const ShiftsPage: React.FC = () => {
       fetchCurrentShift();
       fetchStats();
     }
-  }, [session, filters]);
+  }, [session, filters, pagination.page]);
 
   const fetchShifts = async () => {
     setLoading(true);
     try {
-      let url = '/api/pos/shifts?limit=50&offset=0';
+      const offset = (pagination.page - 1) * pagination.limit;
+      let url = `/api/pos/shifts?limit=${pagination.limit}&offset=${offset}`;
       
       if (filters.status !== 'all') {
         url += `&status=${filters.status}`;
       }
       if (filters.dateFrom) {
-        url += `&dateFrom=${filters.dateFrom}`;
+        url += `&date=${filters.dateFrom}`;
       }
       if (filters.dateTo) {
         url += `&dateTo=${filters.dateTo}`;
+      }
+      if (filters.cashier) {
+        url += `&employeeId=${filters.cashier}`;
       }
 
       const response = await fetch(url);
@@ -78,8 +89,13 @@ const ShiftsPage: React.FC = () => {
       
       if (data.shifts) {
         setShifts(data.shifts);
+        setPagination(prev => ({
+          ...prev,
+          total: data.total || 0
+        }));
       } else {
         setShifts([]);
+        setPagination(prev => ({ ...prev, total: 0 }));
       }
     } catch (error) {
       console.error('Error fetching shifts:', error);
@@ -143,6 +159,63 @@ const ShiftsPage: React.FC = () => {
     fetchCurrentShift();
     fetchStats();
   };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      let url = '/api/pos/shifts/export?format=excel';
+      
+      if (filters.status !== 'all') {
+        url += `&status=${filters.status}`;
+      }
+      if (filters.dateFrom) {
+        url += `&dateFrom=${filters.dateFrom}`;
+      }
+      if (filters.dateTo) {
+        url += `&dateTo=${filters.dateTo}`;
+      }
+
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        alert('Gagal export data');
+        return;
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `shifts-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      alert('Data berhasil di-export!');
+    } catch (error) {
+      console.error('Error exporting:', error);
+      alert('Terjadi kesalahan saat export');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      status: 'all',
+      dateFrom: '',
+      dateTo: '',
+      cashier: ''
+    });
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  const totalPages = Math.ceil(pagination.total / pagination.limit);
 
   if (status === "loading") {
     return (
@@ -285,39 +358,74 @@ const ShiftsPage: React.FC = () => {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900">Riwayat Shift</h2>
-              <button className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                <FaDownload />
-                <span>Export</span>
+              <button 
+                onClick={handleExport}
+                disabled={exporting || shifts.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                <FaDownload className={exporting ? 'animate-bounce' : ''} />
+                <span>{exporting ? 'Exporting...' : 'Export Excel'}</span>
               </button>
             </div>
             
             {/* Filters */}
-            <div className="flex gap-3">
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({...filters, status: e.target.value})}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              >
-                <option value="all">Semua Status</option>
-                <option value="open">Aktif</option>
-                <option value="closed">Selesai</option>
-              </select>
+            <div className="space-y-3">
+              <div className="flex gap-3 flex-wrap">
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({...filters, status: e.target.value})}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="open">Aktif</option>
+                  <option value="closed">Selesai</option>
+                </select>
+                
+                <input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Dari Tanggal"
+                />
+                
+                <input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Sampai Tanggal"
+                />
+                
+                <button
+                  onClick={handleResetFilters}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Reset Filter
+                </button>
+              </div>
               
-              <input
-                type="date"
-                value={filters.dateFrom}
-                onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Dari Tanggal"
-              />
-              
-              <input
-                type="date"
-                value={filters.dateTo}
-                onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Sampai Tanggal"
-              />
+              {/* Filter Summary */}
+              {(filters.status !== 'all' || filters.dateFrom || filters.dateTo) && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span>Filter aktif:</span>
+                  {filters.status !== 'all' && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                      Status: {filters.status === 'open' ? 'Aktif' : 'Selesai'}
+                    </span>
+                  )}
+                  {filters.dateFrom && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                      Dari: {filters.dateFrom}
+                    </span>
+                  )}
+                  {filters.dateTo && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                      Sampai: {filters.dateTo}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -428,6 +536,64 @@ const ShiftsPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination */}
+          {!loading && shifts.length > 0 && (
+            <div className="p-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  Menampilkan {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} dari {pagination.total} shift
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page === 1}
+                    className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (pagination.page <= 3) {
+                        pageNum = i + 1;
+                      } else if (pagination.page >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = pagination.page - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`px-3 py-1 rounded-lg ${
+                            pagination.page === pageNum
+                              ? 'bg-red-600 text-white'
+                              : 'border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page >= totalPages}
+                    className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
