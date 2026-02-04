@@ -30,13 +30,18 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
-  // Load collapsed state from localStorage
+  // Auto-collapse sidebar for cashier page, otherwise load from localStorage
   React.useEffect(() => {
-    const saved = localStorage.getItem('sidebarCollapsed');
-    if (saved !== null) {
-      setSidebarCollapsed(saved === 'true');
+    const isCashierPage = router.pathname === '/pos/cashier';
+    if (isCashierPage) {
+      setSidebarCollapsed(true);
+    } else {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      if (saved !== null) {
+        setSidebarCollapsed(saved === 'true');
+      }
     }
-  }, []);
+  }, [router.pathname]);
 
   // Save collapsed state to localStorage
   const toggleSidebarCollapse = () => {
@@ -46,15 +51,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   };
 
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-    { icon: ShoppingCart, label: 'POS', href: '/pos' },
-    { icon: Package, label: 'Inventory', href: '/inventory' },
-    { icon: Wallet, label: 'Finance', href: '/finance' },
-    { icon: Users, label: 'Customers', href: '/customers' },
+    { icon: LayoutDashboard, label: 'Dasbor', href: '/dashboard' },
+    { icon: ShoppingCart, label: 'Kasir', href: '/pos' },
+    { icon: Package, label: 'Inventori', href: '/inventory' },
+    { icon: Wallet, label: 'Keuangan', href: '/finance' },
+    { icon: Users, label: 'Pelanggan', href: '/customers' },
     { icon: Ticket, label: 'Promo & Voucher', href: '/promo-voucher' },
-    { icon: Award, label: 'Loyalty Program', href: '/loyalty-program' },
-    { icon: BarChart3, label: 'Reports', href: '/reports' },
-    { icon: Settings, label: 'Settings', href: '/settings' },
+    { icon: Award, label: 'Program Loyalitas', href: '/loyalty-program' },
+    { icon: BarChart3, label: 'Laporan', href: '/reports' },
+    { icon: Settings, label: 'Pengaturan', href: '/settings' },
   ];
 
   const handleLogout = async () => {
@@ -162,12 +167,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             }`} />
             <span className={`transition-all ${
               sidebarCollapsed ? 'lg:hidden' : ''
-            }`}>Logout</span>
+            }`}>Keluar</span>
             
             {/* Tooltip for collapsed state */}
             {sidebarCollapsed && (
               <div className="hidden lg:block absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
-                Logout
+                Keluar
                 <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
               </div>
             )}

@@ -109,4 +109,27 @@ const PosTransaction = sequelize.define('PosTransaction', {
   ]
 });
 
+// Define associations
+PosTransaction.associate = (models) => {
+  PosTransaction.hasMany(models.PosTransactionItem, {
+    foreignKey: 'transactionId',
+    as: 'items'
+  });
+  
+  PosTransaction.belongsTo(models.Customer, {
+    foreignKey: 'customerId',
+    as: 'customer'
+  });
+  
+  PosTransaction.belongsTo(models.Employee, {
+    foreignKey: 'cashierId',
+    as: 'cashier'
+  });
+  
+  PosTransaction.belongsTo(models.Shift, {
+    foreignKey: 'shiftId',
+    as: 'shift'
+  });
+};
+
 module.exports = PosTransaction;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
@@ -15,49 +15,383 @@ import { Progress } from '@/components/ui/progress';
 import { 
   FaStar, FaGift, FaTrophy, FaUsers, FaChartLine,
   FaPlus, FaEdit, FaTrash, FaSearch, FaDownload,
-  FaMedal, FaCrown, FaAward, FaCoins
+  FaMedal, FaCrown, FaAward, FaCoins, FaSpinner
 } from 'react-icons/fa';
+
+interface Tier {
+  id: string;
+  name: string;
+  minPoints: number;
+  maxPoints: number | null;
+  benefits: string[];
+  members: number;
+  color: string;
+  pointMultiplier?: number;
+  discountPercentage?: number;
+}
+
+interface Member {
+  id: string;
+  name: string;
+  email: string;
+  tier: string;
+  points: number;
+  totalSpent: number;
+  transactions: number;
+}
+
+interface Reward {
+  id: string;
+  name: string;
+  points: number;
+  stock: number;
+  claimed: number;
+  type: string;
+  value?: number;
+  description?: string;
+}
+
+interface Stats {
+  totalMembers: number;
+  pointsRedeemedThisMonth: number;
+  rewardsClaimed: number;
+  engagementRate: number;
+}
 
 const LoyaltyProgramPage: React.FC = () => {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
+  
+  // State for data from API
+  const [tiers, setTiers] = useState<Tier[]>([]);
+  const [topMembers, setTopMembers] = useState<Member[]>([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [stats, setStats] = useState<Stats>({
+    totalMembers: 0,
+    pointsRedeemedThisMonth: 0,
+    rewardsClaimed: 0,
+    engagementRate: 0
+  });
 
-  React.useEffect(() => {
+  // Modal states
+  const [showTierModal, setShowTierModal] = useState(false);
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
+  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
+  
+  // Form states
+  const [tierFormData, setTierFormData] = useState({
+    tierName: '',
+    tierLevel: 1,
+    minSpending: 0,
+    pointMultiplier: 1.0,
+    discountPercentage: 0,
+    benefits: [''],
+    color: 'bg-gray-500'
+  });
+  
+  const [rewardFormData, setRewardFormData] = useState({
+    name: '',
+    description: '',
+    points: 0,
+    stock: 0,
+    type: 'voucher',
+    value: 0
+  });
+
+  useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
     }
   }, [session, status, router]);
 
-  // Mock data
-  const tiers = [
-    { id: '1', name: 'Bronze', minPoints: 0, maxPoints: 999, benefits: ['Diskon 5%', 'Poin 1x'], members: 1234, color: 'bg-orange-600' },
-    { id: '2', name: 'Silver', minPoints: 1000, maxPoints: 4999, benefits: ['Diskon 10%', 'Poin 1.5x', 'Free Shipping'], members: 567, color: 'bg-gray-400' },
-    { id: '3', name: 'Gold', minPoints: 5000, maxPoints: 9999, benefits: ['Diskon 15%', 'Poin 2x', 'Free Shipping', 'Priority Support'], members: 234, color: 'bg-yellow-500' },
-    { id: '4', name: 'Platinum', minPoints: 10000, maxPoints: null, benefits: ['Diskon 20%', 'Poin 3x', 'Free Shipping', 'Priority Support', 'Exclusive Deals'], members: 89, color: 'bg-purple-600' },
-  ];
+  useEffect(() => {
+    if (session) {
+      fetchDashboardData();
+    }
+  }, [session]);
 
-  const topMembers = [
-    { id: '1', name: 'Ahmad Rizki', email: 'ahmad@email.com', tier: 'Platinum', points: 15420, totalSpent: 25000000, transactions: 145 },
-    { id: '2', name: 'Siti Nurhaliza', email: 'siti@email.com', tier: 'Gold', points: 8750, totalSpent: 18000000, transactions: 98 },
-    { id: '3', name: 'Budi Santoso', email: 'budi@email.com', tier: 'Gold', points: 7230, totalSpent: 15000000, transactions: 87 },
-    { id: '4', name: 'Dewi Lestari', email: 'dewi@email.com', tier: 'Silver', points: 3450, totalSpent: 8500000, transactions: 56 },
-    { id: '5', name: 'Eko Prasetyo', email: 'eko@email.com', tier: 'Silver', points: 2890, totalSpent: 7200000, transactions: 43 },
-  ];
+  useEffect(() => {
+    if (session && activeTab === 'rewards') {
+      fetchRewards();
+    }
+  }, [session, activeTab]);
 
-  const rewards = [
-    { id: '1', name: 'Voucher Rp 50.000', points: 500, stock: 100, claimed: 45, type: 'voucher' },
-    { id: '2', name: 'Voucher Rp 100.000', points: 1000, stock: 50, claimed: 23, type: 'voucher' },
-    { id: '3', name: 'Free Product Sample', points: 250, stock: 200, claimed: 156, type: 'product' },
-    { id: '4', name: 'Exclusive Merchandise', points: 2000, stock: 30, claimed: 12, type: 'merchandise' },
-  ];
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/loyalty/dashboard');
+      const data = await response.json();
 
-  const stats = [
-    { label: 'Total Member', value: '2,124', icon: FaUsers, color: 'bg-blue-500', change: '+12%' },
-    { label: 'Poin Ditukar Bulan Ini', value: '45,678', icon: FaCoins, color: 'bg-green-500', change: '+8%' },
-    { label: 'Reward Diklaim', value: '236', icon: FaGift, color: 'bg-purple-500', change: '+15%' },
-    { label: 'Engagement Rate', value: '68%', icon: FaChartLine, color: 'bg-orange-500', change: '+5%' },
+      if (data.success) {
+        setStats(data.data.stats);
+        setTiers(data.data.tiers);
+        setTopMembers(data.data.topMembers);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRewards = async () => {
+    try {
+      const response = await fetch('/api/loyalty/rewards/crud');
+      const data = await response.json();
+
+      if (data.success) {
+        setRewards(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching rewards:', error);
+    }
+  };
+
+  const handleAddTier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/loyalty/tiers/crud', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tierFormData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Tier berhasil ditambahkan!');
+        setShowTierModal(false);
+        resetTierForm();
+        fetchDashboardData();
+      } else {
+        alert(data.error || 'Gagal menambah tier');
+      }
+    } catch (error) {
+      console.error('Error adding tier:', error);
+      alert('Terjadi kesalahan saat menambah tier');
+    }
+  };
+
+  const handleEditTier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTier) return;
+
+    try {
+      const response = await fetch(`/api/loyalty/tiers/crud?id=${selectedTier.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tierFormData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Tier berhasil diupdate!');
+        setShowTierModal(false);
+        setSelectedTier(null);
+        resetTierForm();
+        fetchDashboardData();
+      } else {
+        alert(data.error || 'Gagal mengupdate tier');
+      }
+    } catch (error) {
+      console.error('Error updating tier:', error);
+      alert('Terjadi kesalahan saat mengupdate tier');
+    }
+  };
+
+  const handleDeleteTier = async (tierId: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus tier ini?')) return;
+
+    try {
+      const response = await fetch(`/api/loyalty/tiers/crud?id=${tierId}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Tier berhasil dihapus!');
+        fetchDashboardData();
+      } else {
+        alert(data.error || 'Gagal menghapus tier');
+      }
+    } catch (error) {
+      console.error('Error deleting tier:', error);
+      alert('Terjadi kesalahan saat menghapus tier');
+    }
+  };
+
+  const openAddTierModal = () => {
+    resetTierForm();
+    setSelectedTier(null);
+    setShowTierModal(true);
+  };
+
+  const openEditTierModal = (tier: Tier) => {
+    setSelectedTier(tier);
+    setTierFormData({
+      tierName: tier.name,
+      tierLevel: tiers.findIndex(t => t.id === tier.id) + 1,
+      minSpending: tier.minPoints,
+      pointMultiplier: tier.pointMultiplier || 1.0,
+      discountPercentage: tier.discountPercentage || 0,
+      benefits: tier.benefits,
+      color: tier.color
+    });
+    setShowTierModal(true);
+  };
+
+  const resetTierForm = () => {
+    setTierFormData({
+      tierName: '',
+      tierLevel: tiers.length + 1,
+      minSpending: 0,
+      pointMultiplier: 1.0,
+      discountPercentage: 0,
+      benefits: [''],
+      color: 'bg-gray-500'
+    });
+  };
+
+  const addBenefit = () => {
+    setTierFormData({
+      ...tierFormData,
+      benefits: [...tierFormData.benefits, '']
+    });
+  };
+
+  const updateBenefit = (index: number, value: string) => {
+    const newBenefits = [...tierFormData.benefits];
+    newBenefits[index] = value;
+    setTierFormData({
+      ...tierFormData,
+      benefits: newBenefits
+    });
+  };
+
+  const removeBenefit = (index: number) => {
+    const newBenefits = tierFormData.benefits.filter((_, i) => i !== index);
+    setTierFormData({
+      ...tierFormData,
+      benefits: newBenefits
+    });
+  };
+
+  const handleAddReward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/loyalty/rewards/crud', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rewardFormData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Reward berhasil ditambahkan!');
+        setShowRewardModal(false);
+        resetRewardForm();
+        fetchRewards();
+      } else {
+        alert(data.error || 'Gagal menambah reward');
+      }
+    } catch (error) {
+      console.error('Error adding reward:', error);
+      alert('Terjadi kesalahan saat menambah reward');
+    }
+  };
+
+  const handleEditReward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReward) return;
+
+    try {
+      const response = await fetch(`/api/loyalty/rewards/crud?id=${selectedReward.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rewardFormData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Reward berhasil diupdate!');
+        setShowRewardModal(false);
+        setSelectedReward(null);
+        resetRewardForm();
+        fetchRewards();
+      } else {
+        alert(data.error || 'Gagal mengupdate reward');
+      }
+    } catch (error) {
+      console.error('Error updating reward:', error);
+      alert('Terjadi kesalahan saat mengupdate reward');
+    }
+  };
+
+  const handleDeleteReward = async (rewardId: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus reward ini?')) return;
+
+    try {
+      const response = await fetch(`/api/loyalty/rewards/crud?id=${rewardId}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Reward berhasil dihapus!');
+        fetchRewards();
+      } else {
+        alert(data.error || 'Gagal menghapus reward');
+      }
+    } catch (error) {
+      console.error('Error deleting reward:', error);
+      alert('Terjadi kesalahan saat menghapus reward');
+    }
+  };
+
+  const openAddRewardModal = () => {
+    resetRewardForm();
+    setSelectedReward(null);
+    setShowRewardModal(true);
+  };
+
+  const openEditRewardModal = (reward: Reward) => {
+    setSelectedReward(reward);
+    setRewardFormData({
+      name: reward.name,
+      description: reward.description || '',
+      points: reward.points,
+      stock: reward.stock,
+      type: reward.type,
+      value: reward.value || 0
+    });
+    setShowRewardModal(true);
+  };
+
+  const resetRewardForm = () => {
+    setRewardFormData({
+      name: '',
+      description: '',
+      points: 0,
+      stock: 0,
+      type: 'voucher',
+      value: 0
+    });
+  };
+
+  const statsDisplay = [
+    { label: 'Total Member', value: stats.totalMembers.toLocaleString(), icon: FaUsers, color: 'bg-blue-500', change: '+12%' },
+    { label: 'Poin Ditukar Bulan Ini', value: stats.pointsRedeemedThisMonth.toLocaleString(), icon: FaCoins, color: 'bg-green-500', change: '+8%' },
+    { label: 'Reward Diklaim', value: stats.rewardsClaimed.toLocaleString(), icon: FaGift, color: 'bg-purple-500', change: '+15%' },
+    { label: 'Engagement Rate', value: `${stats.engagementRate}%`, icon: FaChartLine, color: 'bg-orange-500', change: '+5%' },
   ];
 
   const formatCurrency = (amount: number) => {
@@ -129,23 +463,29 @@ const LoyaltyProgramPage: React.FC = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <Card key={index}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className={`${stat.color} w-10 h-10 rounded-lg flex items-center justify-center`}>
-                      <Icon className="w-5 h-5 text-white" />
+          {loading ? (
+            <div className="col-span-4 flex justify-center py-8">
+              <FaSpinner className="animate-spin text-orange-600 text-3xl" />
+            </div>
+          ) : (
+            statsDisplay.map((stat, index) => {
+              const Icon = stat.icon;
+              return (
+                <Card key={index}>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className={`${stat.color} w-10 h-10 rounded-lg flex items-center justify-center`}>
+                        <Icon className="w-5 h-5 text-white" />
+                      </div>
+                      <span className="text-xs font-medium text-green-600">{stat.change}</span>
                     </div>
-                    <span className="text-xs font-medium text-green-600">{stat.change}</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
+                    <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
         </div>
 
         {/* Main Content */}
@@ -256,7 +596,7 @@ const LoyaltyProgramPage: React.FC = () => {
                     <CardTitle>Tier Membership</CardTitle>
                     <CardDescription>Kelola tier dan benefit program loyalitas</CardDescription>
                   </div>
-                  <Button>
+                  <Button onClick={openAddTierModal}>
                     <FaPlus className="mr-2 h-4 w-4" />
                     Tambah Tier
                   </Button>
@@ -282,10 +622,10 @@ const LoyaltyProgramPage: React.FC = () => {
                               </div>
                             </div>
                             <div className="flex space-x-1">
-                              <Button variant="ghost" size="sm">
+                              <Button variant="ghost" size="sm" onClick={() => openEditTierModal(tier)}>
                                 <FaEdit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="sm" className="text-red-600">
+                              <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleDeleteTier(tier.id)}>
                                 <FaTrash className="h-4 w-4" />
                               </Button>
                             </div>
@@ -332,7 +672,7 @@ const LoyaltyProgramPage: React.FC = () => {
                       <FaDownload className="mr-2 h-4 w-4" />
                       Export
                     </Button>
-                    <Button>
+                    <Button onClick={openAddRewardModal}>
                       <FaPlus className="mr-2 h-4 w-4" />
                       Tambah Reward
                     </Button>
@@ -383,10 +723,10 @@ const LoyaltyProgramPage: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
-                              <Button variant="ghost" size="sm">
+                              <Button variant="ghost" size="sm" onClick={() => openEditRewardModal(reward)}>
                                 <FaEdit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="sm" className="text-red-600">
+                              <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleDeleteReward(reward.id)}>
                                 <FaTrash className="h-4 w-4" />
                               </Button>
                             </div>
@@ -479,6 +819,270 @@ const LoyaltyProgramPage: React.FC = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Add/Edit Tier Modal */}
+        {showTierModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-bold mb-4">
+                {selectedTier ? 'Edit Tier' : 'Tambah Tier Baru'}
+              </h3>
+              <form onSubmit={selectedTier ? handleEditTier : handleAddTier}>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nama Tier *</label>
+                      <input
+                        type="text"
+                        required
+                        value={tierFormData.tierName}
+                        onChange={(e) => setTierFormData({...tierFormData, tierName: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                        placeholder="e.g., Diamond"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Level Tier *</label>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        value={tierFormData.tierLevel}
+                        onChange={(e) => setTierFormData({...tierFormData, tierLevel: parseInt(e.target.value)})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Spending (Rp) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      value={tierFormData.minSpending}
+                      onChange={(e) => setTierFormData({...tierFormData, minSpending: parseFloat(e.target.value)})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="e.g., 50000000"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Point Multiplier *</label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        step="0.1"
+                        value={tierFormData.pointMultiplier}
+                        onChange={(e) => setTierFormData({...tierFormData, pointMultiplier: parseFloat(e.target.value)})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                        placeholder="e.g., 5.0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%) *</label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={tierFormData.discountPercentage}
+                        onChange={(e) => setTierFormData({...tierFormData, discountPercentage: parseFloat(e.target.value)})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                        placeholder="e.g., 30"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Warna Badge</label>
+                    <select
+                      value={tierFormData.color}
+                      onChange={(e) => setTierFormData({...tierFormData, color: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                    >
+                      <option value="bg-orange-600">Orange</option>
+                      <option value="bg-gray-400">Silver</option>
+                      <option value="bg-yellow-500">Gold</option>
+                      <option value="bg-purple-600">Purple</option>
+                      <option value="bg-blue-600">Blue</option>
+                      <option value="bg-green-600">Green</option>
+                      <option value="bg-red-600">Red</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Benefits</label>
+                    <div className="space-y-2">
+                      {tierFormData.benefits.map((benefit, index) => (
+                        <div key={index} className="flex gap-2">
+                          <input
+                            type="text"
+                            value={benefit}
+                            onChange={(e) => updateBenefit(index, e.target.value)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                            placeholder="e.g., Diskon 30%"
+                          />
+                          {tierFormData.benefits.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeBenefit(index)}
+                              className="text-red-600"
+                            >
+                              <FaTrash />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addBenefit}
+                        className="w-full"
+                      >
+                        <FaPlus className="mr-2 h-4 w-4" />
+                        Tambah Benefit
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => { setShowTierModal(false); setSelectedTier(null); resetTierForm(); }}
+                    className="flex-1"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-orange-600 hover:bg-orange-700"
+                  >
+                    {selectedTier ? 'Update' : 'Simpan'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Add/Edit Reward Modal */}
+        {showRewardModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-bold mb-4">
+                {selectedReward ? 'Edit Reward' : 'Tambah Reward Baru'}
+              </h3>
+              <form onSubmit={selectedReward ? handleEditReward : handleAddReward}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Reward *</label>
+                    <input
+                      type="text"
+                      required
+                      value={rewardFormData.name}
+                      onChange={(e) => setRewardFormData({...rewardFormData, name: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="e.g., Voucher Rp 500.000"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                    <textarea
+                      value={rewardFormData.description}
+                      onChange={(e) => setRewardFormData({...rewardFormData, description: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="Deskripsi reward"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipe Reward *</label>
+                    <select
+                      value={rewardFormData.type}
+                      onChange={(e) => setRewardFormData({...rewardFormData, type: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                    >
+                      <option value="voucher">Voucher</option>
+                      <option value="product">Produk</option>
+                      <option value="discount">Diskon</option>
+                      <option value="merchandise">Merchandise</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Poin Dibutuhkan *</label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        value={rewardFormData.points}
+                        onChange={(e) => setRewardFormData({...rewardFormData, points: parseInt(e.target.value)})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                        placeholder="e.g., 5000"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Stok *</label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        value={rewardFormData.stock}
+                        onChange={(e) => setRewardFormData({...rewardFormData, stock: parseInt(e.target.value)})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                        placeholder="e.g., 100"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nilai (Rp)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={rewardFormData.value}
+                      onChange={(e) => setRewardFormData({...rewardFormData, value: parseFloat(e.target.value)})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="e.g., 500000"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Nilai reward dalam rupiah (untuk voucher/diskon)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => { setShowRewardModal(false); setSelectedReward(null); resetRewardForm(); }}
+                    className="flex-1"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-orange-600 hover:bg-orange-700"
+                  >
+                    {selectedReward ? 'Update' : 'Simpan'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

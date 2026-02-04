@@ -1,16 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { authenticateUser, isAuthorized } from '@/lib/auth';
-import { withApiHandler, success, error, parseQueryParams, ApiContext } from '@/utils/api-utils';
-import { ApiError } from '@/middleware/error-handler';
-import {
-  getCustomers,
-  getCustomerById,
-  createCustomer,
-  updateCustomer,
-  deleteCustomer,
-  getCustomerStatistics,
-  getCustomerPurchaseHistory
-} from '../../../server/sequelize/adapters/customers-adapter';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
+
+const db = require('../../../models');
+const Customer = db.Customer;
 
 // Sample customer data with red-orange theme for status indicators (used as fallback when database is unavailable)
 const mockCustomers = [

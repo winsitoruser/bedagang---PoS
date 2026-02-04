@@ -26,8 +26,8 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import ExportDataDropdown from "@/components/shared/export-data-dropdown";
-import ImportDataDialog from "@/components/shared/import-data-dialog";
+// import ExportDataDropdown from "@/components/shared/export-data-dropdown";
+// import ImportDataDialog from "@/components/shared/import-data-dialog";
 import {
   FaFileInvoiceDollar,
   FaEye,
@@ -84,171 +84,7 @@ interface ApiState {
   }
 }
 
-// Mock invoices akan digunakan sebagai fallback jika API gagal
-const mockInvoices: Invoice[] = [
-  {
-    id: "INV-2025-001",
-    supplier: "PT. Pharma Utama",
-    date: "15 Mar 2025",
-    dueDate: "30 Mar 2025",
-    amount: 7500000,
-    status: "pending",
-    type: "supplier",
-    paymentStatus: "partial",
-    totalPaid: 3500000,
-    remainingAmount: 4000000,
-    paymentHistory: [
-      { 
-        id: "PAY-001", 
-        date: "20 Mar 2025", 
-        amount: 2000000, 
-        method: "transfer", 
-        receivedBy: "Ahmad Riyadi",
-        reference: "TRX-87654321" 
-      },
-      { 
-        id: "PAY-002", 
-        date: "25 Mar 2025", 
-        amount: 1500000, 
-        method: "cash", 
-        receivedBy: "Budi Santoso",
-        reference: "CASH-98765" 
-      }
-    ],
-    purchaseOrder: "PO-2025-001",
-    items: [
-      { id: 1, product: "Paracetamol 500mg", quantity: 1000, price: 2500, total: 2500000, received: 1000 },
-      { id: 2, product: "Amoxicillin 500mg", quantity: 500, price: 5000, total: 2500000, received: 500 },
-      { id: 3, product: "Vitamin C 1000mg", quantity: 500, price: 5000, total: 2500000, received: 500 }
-    ],
-    inventoryStatus: "complete",
-    inventoryReceipts: [
-      {
-        id: "GRN-001",
-        receiptNumber: "RCV-2025-001",
-        date: "18 Mar 2025",
-        receivedBy: "Dian Purnama",
-        notes: "Semua barang diterima dalam kondisi baik"
-      }
-    ]
-  },
-  {
-    id: "INV-2025-002",
-    supplier: "CV Medical Supplies",
-    date: "17 Mar 2025",
-    dueDate: "31 Mar 2025",
-    amount: 12000000,
-    status: "pending",
-    type: "supplier",
-    paymentStatus: "unpaid",
-    totalPaid: 0,
-    remainingAmount: 12000000,
-    paymentHistory: [],
-    purchaseOrder: "PO-2025-002",
-    items: [
-      { id: 1, product: "Stetoskop Premium", quantity: 10, price: 500000, total: 5000000 },
-      { id: 2, product: "Tensimeter Digital", quantity: 20, price: 350000, total: 7000000 }
-    ],
-    inventoryStatus: "partial",
-    inventoryReceipts: [
-      {
-        id: "GRN-002",
-        receiptNumber: "RCV-2025-002",
-        date: "22 Mar 2025",
-        receivedBy: "Eko Prasetyo",
-        notes: "Pengiriman pertama sebagian barang"
-      }
-    ]
-  },
-  {
-    id: "INV-2025-003",
-    supplier: "Kimia Farma",
-    date: "10 Mar 2025",
-    dueDate: "24 Mar 2025",
-    amount: 5000000,
-    status: "received",
-    type: "supplier",
-    paymentStatus: "paid",
-    totalPaid: 5000000,
-    remainingAmount: 0,
-    paymentHistory: [
-      { 
-        id: "PAY-003", 
-        date: "15 Mar 2025", 
-        amount: 5000000, 
-        method: "transfer", 
-        receivedBy: "Fina Handayani",
-        reference: "TRX-12345" 
-      }
-    ],
-    purchaseOrder: "PO-2025-003",
-    items: [
-      { id: 1, product: "Salep Antibiotik", quantity: 100, price: 15000, total: 1500000, received: 0 },
-      { id: 2, product: "Alkohol 70%", quantity: 50, price: 25000, total: 1250000, received: 0 },
-      { id: 3, product: "Perban Steril", quantity: 150, price: 15000, total: 2250000, received: 0 }
-    ],
-    inventoryStatus: "pending",
-    inventoryReceipts: []
-  },
-  {
-    id: "INV-2025-004",
-    supplier: "RSUD Citra Medika",
-    date: "10 Mar 2025",
-    dueDate: "25 Mar 2025",
-    amount: 12500000,
-    status: "delivered",
-    type: "customer",
-    paymentStatus: "paid",
-    totalPaid: 12500000,
-    remainingAmount: 0,
-    paymentHistory: [
-      { 
-        id: 'PAY-002', 
-        date: '20 Mar 2025', 
-        amount: 12500000, 
-        method: 'Transfer Bank', 
-        reference: 'TRF/2025/002',
-        receivedBy: 'Ahmad Riyadi' 
-      }
-    ],
-    purchaseOrder: null,
-    items: [
-      { id: 1, product: "Paracetamol 500mg", quantity: 2000, price: 3000, total: 6000000 },
-      { id: 2, product: "Amoxicillin 500mg", quantity: 1000, price: 6500, total: 6500000 }
-    ],
-    inventoryStatus: "complete",
-    inventoryReceipts: []
-  },
-  {
-    id: "INV-2025-005",
-    supplier: "Klinik Sehat Sentosa",
-    date: "12 Mar 2025",
-    dueDate: "27 Mar 2025",
-    amount: 8750000,
-    status: "delivered",
-    type: "customer",
-    paymentStatus: "partial",
-    totalPaid: 5000000,
-    remainingAmount: 3750000,
-    paymentHistory: [
-      { 
-        id: 'PAY-003', 
-        date: '18 Mar 2025', 
-        amount: 5000000, 
-        method: 'Cash', 
-        reference: 'CSH/2025/001',
-        receivedBy: 'Dian Purnama' 
-      }
-    ],
-    purchaseOrder: null,
-    items: [
-      { id: 1, product: "Vitamin C 1000mg", quantity: 1000, price: 5500, total: 5500000 },
-      { id: 2, product: "Vitamin B Complex", quantity: 650, price: 5000, total: 3250000 }
-    ],
-    inventoryStatus: "complete",
-    inventoryReceipts: []
-  },
-];
+// Mock data removed - using real backend API
 
 // Definisikan tipe untuk payment, receipt, dan item
 interface PaymentHistory {
@@ -348,6 +184,8 @@ const formatCurrency = (amount: number) => {
 
 const InvoicesPage: NextPage = () => {
   const router = useRouter();
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [tabValue, setTabValue] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -507,7 +345,7 @@ const InvoicesPage: NextPage = () => {
   ];
 
   // Filter faktur berdasarkan pencarian, status, dan tipe
-  const filteredInvoices = getSortedItems(mockInvoices)
+  const filteredInvoices = getSortedItems(invoices)
     .filter(invoice => {
       // Filter pencarian
       const searchMatch = 
@@ -571,8 +409,8 @@ const InvoicesPage: NextPage = () => {
 
   // Fetch invoices from the API
   const fetchInvoices = async () => {
+    setLoading(true);
     try {
-      // Make API request
       const response = await fetch('/api/finance/invoices');
       
       if (!response.ok) {
@@ -581,10 +419,18 @@ const InvoicesPage: NextPage = () => {
       
       const data = await response.json();
       
-      // Update state with the fetched data
-      console.log(data);
+      if (data.success) {
+        setInvoices(data.data || []);
+        console.log('Invoices loaded from backend:', data.data?.length || 0, 'items');
+      } else {
+        console.error('Failed to fetch invoices:', data.error);
+        setInvoices([]);
+      }
     } catch (error) {
       console.error('Error fetching invoices:', error);
+      setInvoices([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -611,7 +457,8 @@ const InvoicesPage: NextPage = () => {
               <FaPlus className="mr-2 h-4 w-4" />
               Buat Faktur Baru
             </Button>
-            <ExportDataDropdown 
+            {/* Export and Import components temporarily disabled - need to create components */}
+            {/* <ExportDataDropdown 
               data={prepareExportData()}
               filename="Daftar_Faktur_Invoice"
               pdfTitle="Daftar Faktur dan Invoice"
@@ -639,7 +486,7 @@ const InvoicesPage: NextPage = () => {
                   Import
                 </Button>
               }
-            />
+            /> */}
             <Button 
               className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white"
               onClick={() => router.push('/finance/ledger')}
@@ -939,7 +786,7 @@ const InvoicesPage: NextPage = () => {
           <CardFooter className="bg-white px-6 py-4 border-t border-orange-100">
             <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-4">
               <div className="text-sm text-gray-500">
-                Menampilkan {filteredInvoices.length} dari {mockInvoices.length} faktur
+                Menampilkan {filteredInvoices.length} dari {invoices.length} faktur
               </div>
               <div className="flex items-center space-x-2">
                 <Select
@@ -983,7 +830,7 @@ const InvoicesPage: NextPage = () => {
                   <span className="text-sm px-2">
                     Halaman <span className="font-medium">{currentPage}</span> dari{" "}
                     <span className="font-medium">
-                      {Math.ceil(mockInvoices.length / itemsPerPage)}
+                      {Math.ceil(invoices.length / itemsPerPage)}
                     </span>
                   </span>
                   
@@ -992,7 +839,7 @@ const InvoicesPage: NextPage = () => {
                     size="icon"
                     className="h-8 w-8 border-orange-200 text-orange-700 hover:bg-orange-50"
                     onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage === Math.ceil(mockInvoices.length / itemsPerPage)}
+                    disabled={currentPage === Math.ceil(invoices.length / itemsPerPage)}
                   >
                     <FaArrowRight className="h-3 w-3" />
                   </Button>
@@ -1000,8 +847,8 @@ const InvoicesPage: NextPage = () => {
                     variant="outline"
                     size="icon"
                     className="h-8 w-8 border-orange-200 text-orange-700 hover:bg-orange-50"
-                    onClick={() => setCurrentPage(Math.ceil(mockInvoices.length / itemsPerPage))}
-                    disabled={currentPage === Math.ceil(mockInvoices.length / itemsPerPage)}
+                    onClick={() => setCurrentPage(Math.ceil(invoices.length / itemsPerPage))}
+                    disabled={currentPage === Math.ceil(invoices.length / itemsPerPage)}
                   >
                     <FaArrowRight className="h-3 w-3" />
                   </Button>

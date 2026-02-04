@@ -10,8 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import ExportDataDropdown from "@/components/shared/export-data-dropdown";
-import ImportDataDialog from "@/components/shared/import-data-dialog";
+// import ExportDataDropdown from "@/components/shared/export-data-dropdown";
+// import ImportDataDialog from "@/components/shared/import-data-dialog";
 import { 
   FaMoneyBillWave, FaCalendarAlt, FaSearch, FaFilter, 
   FaDownload, FaPlus, FaSortUp, FaSortDown, FaEye, 
@@ -50,21 +50,7 @@ ChartJS.register(
   BarElement
 );
 
-// Mock data for income transactions
-const mockIncomeTransactions = [
-  { id: "INC-001", date: "27 Mar 2025", description: "Penjualan Obat", amount: 1250000, category: "Penjualan", paymentMethod: "Cash" },
-  { id: "INC-002", date: "25 Mar 2025", description: "Penjualan Alat Kesehatan", amount: 2300000, category: "Penjualan", paymentMethod: "Transfer" },
-  { id: "INC-003", date: "24 Mar 2025", description: "Konsultasi Dokter", amount: 750000, category: "Layanan", paymentMethod: "Cash" },
-  { id: "INC-004", date: "23 Mar 2025", description: "Penjualan Vitamin", amount: 980000, category: "Penjualan", paymentMethod: "Cash" },
-  { id: "INC-005", date: "21 Mar 2025", description: "Penjualan Obat", amount: 1450000, category: "Penjualan", paymentMethod: "Transfer" },
-  { id: "INC-006", date: "20 Mar 2025", description: "Penjualan Kosmetik", amount: 2100000, category: "Penjualan", paymentMethod: "Card" },
-  { id: "INC-007", date: "18 Mar 2025", description: "Penjualan Susu", amount: 1850000, category: "Penjualan", paymentMethod: "Transfer" },
-  { id: "INC-008", date: "15 Mar 2025", description: "Penjualan Obat", amount: 1350000, category: "Penjualan", paymentMethod: "Cash" },
-  { id: "INC-009", date: "12 Mar 2025", description: "Konsultasi Dokter", amount: 950000, category: "Layanan", paymentMethod: "Transfer" },
-  { id: "INC-010", date: "10 Mar 2025", description: "Penjualan Suplemen", amount: 2650000, category: "Penjualan", paymentMethod: "Card" },
-  { id: "INC-011", date: "08 Mar 2025", description: "Program Kemitraan", amount: 5000000, category: "Kemitraan", paymentMethod: "Transfer" },
-  { id: "INC-012", date: "05 Mar 2025", description: "Penjualan Alat Kesehatan", amount: 1750000, category: "Penjualan", paymentMethod: "Cash" },
-];
+// Mock data removed - using real backend API
 
 // Income categories with icons
 const incomeCategories = [
@@ -187,7 +173,7 @@ const pieChartOptions = {
 
 const FinanceIncomePage: NextPage = () => {
   // State variables
-  const [incomeTransactions, setIncomeTransactions] = useState<any[]>(mockIncomeTransactions);
+  const [incomeTransactions, setIncomeTransactions] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
@@ -236,10 +222,7 @@ const FinanceIncomePage: NextPage = () => {
       setError(null);
 
       try {
-        // Set data mock terlebih dahulu sebagai fallback
-        setIncomeTransactions(mockIncomeTransactions);
-
-        // Attempt to fetch from API
+        // Fetch from API
         const response = await fetch('/api/finance/revenue');
 
         if (response.ok) {
@@ -738,7 +721,8 @@ const FinanceIncomePage: NextPage = () => {
                 >
                   <FaPlus className="mr-2 h-4 w-4" /> Tambah Pemasukan
                 </Button>
-                <ExportDataDropdown 
+                {/* Export and Import components temporarily disabled */}
+                {/* <ExportDataDropdown 
                   data={prepareExportData()}
                   filename="Laporan_Pemasukan"
                   pdfTitle="Laporan Pemasukan"
@@ -762,7 +746,7 @@ const FinanceIncomePage: NextPage = () => {
                       Import
                     </Button>
                   }
-                />
+                /> */}
               </div>
             </div>
           </CardHeader>

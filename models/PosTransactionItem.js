@@ -66,4 +66,17 @@ const PosTransactionItem = sequelize.define('PosTransactionItem', {
   ]
 });
 
+// Define associations
+PosTransactionItem.associate = (models) => {
+  PosTransactionItem.belongsTo(models.PosTransaction, {
+    foreignKey: 'transactionId',
+    as: 'transaction'
+  });
+  
+  PosTransactionItem.belongsTo(models.Product, {
+    foreignKey: 'productId',
+    as: 'product'
+  });
+};
+
 module.exports = PosTransactionItem;

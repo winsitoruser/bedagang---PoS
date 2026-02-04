@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import DashboardLayout from "@/components/layouts/DashboardLayout";
+import AddCustomerWizard from '@/components/customers/AddCustomerWizard';
 import { 
   FaShoppingCart, FaPlus, FaMinus, FaTrash, FaBarcode, 
   FaSearch, FaCreditCard, FaMoneyBillWave, FaReceipt,
@@ -41,6 +42,10 @@ const CashierPage: React.FC = () => {
   const [showAddMemberForm, setShowAddMemberForm] = useState(false);
   const [newMember, setNewMember] = useState({ name: '', phone: '', discount: 10 });
   const [membersList, setMembersList] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>(['Semua']);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
   
   // Shift Management states
   const [activeShift, setActiveShift] = useState<any>(null);
@@ -48,22 +53,96 @@ const CashierPage: React.FC = () => {
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [shiftAction, setShiftAction] = useState<'open' | 'close'>('open');
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
     }
   }, [session, status, router]);
 
-  // Initialize members list
-  React.useEffect(() => {
-    const initialMembers = [
-      { id: '1', name: 'John Doe', phone: '081234567890', points: 150, discount: 10 },
-      { id: '2', name: 'Jane Smith', phone: '081234567891', points: 250, discount: 15 },
-      { id: '3', name: 'Bob Wilson', phone: '081234567892', points: 500, discount: 20 },
-      { id: '4', name: 'Alice Brown', phone: '081234567893', points: 100, discount: 10 },
-    ];
-    setMembersList(initialMembers);
-  }, []);
+  // Fetch products from API
+  useEffect(() => {
+    if (session) {
+      fetchProducts();
+    }
+  }, [session, searchQuery, selectedCategory]);
+
+  // Fetch members from API
+  useEffect(() => {
+    if (session) {
+      fetchMembers();
+    }
+  }, [session]);
+
+  const fetchProducts = async () => {
+    setIsLoadingProducts(true);
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('search', searchQuery);
+      if (selectedCategory && selectedCategory !== 'Semua') params.append('category', selectedCategory);
+
+      const response = await fetch(`/api/pos/products?${params.toString()}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setProducts(data.products || []);
+        if (data.categories) {
+          setCategories(data.categories);
+        }
+      } else {
+        console.error('Failed to fetch products:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
+
+  const fetchMembers = async () => {
+    try {
+      const response = await fetch('/api/pos/members');
+      const data = await response.json();
+
+      if (data.success) {
+        setMembersList(data.members || []);
+      }
+    } catch (error) {
+      console.error('Error fetching members:', error);
+    }
+  };
+
+  // Add new member via API
+  const handleAddMemberAPI = async () => {
+    if (!newMember.name || !newMember.phone) {
+      alert('Nama dan nomor telepon harus diisi!');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/pos/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMember)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSelectedMember(data.member);
+        setCustomerType('member');
+        setNewMember({ name: '', phone: '', discount: 10 });
+        setShowAddMemberForm(false);
+        setShowMemberModal(false);
+        alert('Member baru berhasil ditambahkan!');
+        fetchMembers(); // Refresh members list
+      } else {
+        alert(data.error || 'Gagal menambahkan member');
+      }
+    } catch (error) {
+      console.error('Error adding member:', error);
+      alert('Terjadi kesalahan saat menambahkan member');
+    }
+  };
 
   // Filter members based on search
   const filteredMembers = membersList.filter(member =>
@@ -71,26 +150,9 @@ const CashierPage: React.FC = () => {
     member.phone.includes(searchMember)
   );
 
-  // Add new member
+  // Keep old function for backward compatibility
   const handleAddMember = () => {
-    if (newMember.name && newMember.phone) {
-      const member = {
-        id: Date.now().toString(),
-        name: newMember.name,
-        phone: newMember.phone,
-        points: 0,
-        discount: newMember.discount
-      };
-      setMembersList([...membersList, member]);
-      setSelectedMember(member);
-      setCustomerType('member');
-      setNewMember({ name: '', phone: '', discount: 10 });
-      setShowAddMemberForm(false);
-      setShowMemberModal(false);
-      alert('Member baru berhasil ditambahkan!');
-    } else {
-      alert('Nama dan nomor telepon harus diisi!');
-    }
+    handleAddMemberAPI();
   };
 
   // Mock vouchers
@@ -101,20 +163,7 @@ const CashierPage: React.FC = () => {
     { id: '4', code: 'GRATIS10K', name: 'Gratis Ongkir Rp 10.000', type: 'fixed', value: 10000, minPurchase: 0 },
   ];
 
-  // Mock products
-  const products = [
-    { id: '1', name: 'Kopi Arabica 250g', price: 45000, stock: 50, category: 'Minuman' },
-    { id: '2', name: 'Teh Hijau Premium', price: 35000, stock: 30, category: 'Minuman' },
-    { id: '3', name: 'Gula Pasir 1kg', price: 15000, stock: 100, category: 'Bahan Pokok' },
-    { id: '4', name: 'Minyak Goreng 2L', price: 32000, stock: 75, category: 'Bahan Pokok' },
-    { id: '5', name: 'Beras Premium 5kg', price: 85000, stock: 40, category: 'Bahan Pokok' },
-    { id: '6', name: 'Susu UHT 1L', price: 18000, stock: 60, category: 'Minuman' },
-    { id: '7', name: 'Telur Ayam 1kg', price: 28000, stock: 45, category: 'Protein' },
-    { id: '8', name: 'Daging Ayam 1kg', price: 42000, stock: 25, category: 'Protein' },
-  ];
-
-  // Get unique categories
-  const categories = ['Semua', ...Array.from(new Set(products.map(p => p.category)))];
+  // Products are now fetched from API via useEffect
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -200,7 +249,7 @@ const CashierPage: React.FC = () => {
     setShowPaymentModal(true);
   };
 
-  const processPayment = () => {
+  const processPayment = async () => {
     if (paymentMethod === 'cash') {
       const change = calculateChange();
       if (change < 0) {
@@ -208,28 +257,63 @@ const CashierPage: React.FC = () => {
         return;
       }
     }
-    
-    // Increment transaction counter
-    setTransactionCount(transactionCount + 1);
-    
-    // Update shift stats if shift is active
-    if (activeShift) {
-      const total = calculateTotal();
-      setActiveShift({
-        ...activeShift,
-        totalTransactions: (activeShift.totalTransactions || 0) + 1,
-        totalSales: (activeShift.totalSales || 0) + total,
-        cashSales: paymentMethod === 'cash' ? (activeShift.cashSales || 0) + total : activeShift.cashSales || 0,
-        cardSales: paymentMethod === 'card' ? (activeShift.cardSales || 0) + total : activeShift.cardSales || 0,
-        ewalletSales: paymentMethod === 'qris' ? (activeShift.ewalletSales || 0) + total : activeShift.ewalletSales || 0
+
+    setIsProcessingCheckout(true);
+
+    try {
+      const response = await fetch('/api/pos/cashier/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cart,
+          paymentMethod,
+          cashReceived,
+          customerType,
+          selectedMember,
+          selectedVoucher,
+          shiftId: activeShift?.id,
+          cashierId: session?.user?.id
+        })
       });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Increment transaction counter
+        setTransactionCount(transactionCount + 1);
+        
+        // Update shift stats if shift is active
+        if (activeShift) {
+          const total = calculateTotal();
+          setActiveShift({
+            ...activeShift,
+            totalTransactions: (activeShift.totalTransactions || 0) + 1,
+            totalSales: (activeShift.totalSales || 0) + total,
+            cashSales: paymentMethod === 'cash' ? (activeShift.cashSales || 0) + total : activeShift.cashSales || 0,
+            cardSales: paymentMethod === 'card' ? (activeShift.cardSales || 0) + total : activeShift.cardSales || 0,
+            ewalletSales: paymentMethod === 'qris' ? (activeShift.ewalletSales || 0) + total : activeShift.ewalletSales || 0
+          });
+        }
+        
+        alert(`Pembayaran berhasil!\nNo. Transaksi: ${data.receipt.transactionNumber}`);
+        setShowPaymentModal(false);
+        clearCart();
+        setCashReceived('');
+        setSelectedMember(null);
+        setSelectedVoucher(null);
+        setCustomerType('walk-in');
+        
+        // Refresh products to update stock
+        fetchProducts();
+      } else {
+        alert(data.error || 'Pembayaran gagal!');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Terjadi kesalahan saat memproses pembayaran');
+    } finally {
+      setIsProcessingCheckout(false);
     }
-    
-    // Process payment logic here
-    alert('Pembayaran berhasil!');
-    setShowPaymentModal(false);
-    clearCart();
-    setCashReceived('');
   };
 
   if (status === "loading") {
@@ -261,8 +345,8 @@ const CashierPage: React.FC = () => {
               <FaCashRegister className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white mb-1">Point of Sale</h1>
-              <p className="text-white/80 text-sm">Sistem Kasir Professional</p>
+              <h1 className="text-3xl font-bold text-white mb-1">Kasir</h1>
+              <p className="text-white/80 text-sm">Sistem Kasir Profesional</p>
             </div>
           </div>
           <div className="text-right">
@@ -361,30 +445,59 @@ const CashierPage: React.FC = () => {
 
         {/* Professional Cart Section */}
         <div className="space-y-4">
-          <div className="bg-gradient-to-br from-white to-indigo-50 rounded-2xl shadow-xl border-2 border-indigo-200 p-5 flex flex-col" style={{ height: 'calc(100vh - 250px)' }}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-2 rounded-lg">
-                  <FaShoppingCart className="w-5 h-5 text-white" />
+          <div className="bg-gradient-to-br from-white to-indigo-50 rounded-2xl shadow-xl border-2 border-indigo-200 p-4 flex flex-col" style={{ height: 'calc(100vh - 140px)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-1.5 rounded-lg">
+                  <FaShoppingCart className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Keranjang Belanja</h2>
+                  <h2 className="text-base font-bold text-gray-900">Keranjang Belanja</h2>
                   <p className="text-xs text-gray-500">{cart.length} item dipilih</p>
                 </div>
               </div>
-              {cart.length > 0 && (
-                <button
-                  onClick={clearCart}
-                  className="bg-red-100 text-red-600 hover:bg-red-200 px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center space-x-1"
-                >
-                  <FaTrash className="w-3 h-3" />
-                  <span>Hapus</span>
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {/* Shift Button - Moved from Floating Bar */}
+                {activeShift ? (
+                  <button
+                    onClick={() => {
+                      setShiftAction('close');
+                      setShowShiftModal(true);
+                    }}
+                    className="flex items-center gap-1.5 bg-green-100 border border-green-300 px-2.5 py-1.5 rounded-lg"
+                  >
+                    <FaClock className="w-3.5 h-3.5 text-green-600" />
+                    <div className="text-left">
+                      <p className="text-[10px] font-semibold text-green-700 leading-tight">Shift Aktif</p>
+                      <p className="text-[10px] text-green-600 leading-tight">{activeShift.shiftType || 'Pagi'}</p>
+                    </div>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setShiftAction('open');
+                      setShowShiftModal(true);
+                    }}
+                    className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 px-2.5 py-1.5 rounded-lg transition-all"
+                  >
+                    <FaClock className="w-3.5 h-3.5 text-white" />
+                    <span className="text-white font-semibold text-xs">Buka Shift</span>
+                  </button>
+                )}
+                {cart.length > 0 && (
+                  <button
+                    onClick={clearCart}
+                    className="bg-red-100 text-red-600 hover:bg-red-200 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center space-x-1"
+                  >
+                    <FaTrash className="w-3 h-3" />
+                    <span>Hapus</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Customer Type Selection */}
-            <div className="mb-3 bg-white rounded-xl p-3 border-2 border-indigo-100">
+            <div className="mb-2.5 bg-white rounded-xl p-2.5 border-2 border-indigo-100">
               <label className="text-xs font-bold text-gray-700 mb-2 block">Jenis Pelanggan</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -430,41 +543,8 @@ const CashierPage: React.FC = () => {
               )}
             </div>
 
-            {/* Voucher Selection */}
-            <div className="mb-3 bg-white rounded-xl p-3 border-2 border-indigo-100">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-bold text-gray-700">Voucher / Kupon</label>
-                <button
-                  onClick={() => setShowVoucherModal(true)}
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
-                >
-                  Pilih
-                </button>
-              </div>
-              {selectedVoucher ? (
-                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-2 border border-yellow-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-xs font-bold text-orange-900">{selectedVoucher.code}</p>
-                      <p className="text-xs text-orange-600">{selectedVoucher.name}</p>
-                    </div>
-                    <button
-                      onClick={() => setSelectedVoucher(null)}
-                      className="ml-2 text-orange-600 hover:text-orange-700"
-                    >
-                      <FaTimes className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-2 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                  <p className="text-xs text-gray-500">Tidak ada voucher dipilih</p>
-                </div>
-              )}
-            </div>
-
             {/* Professional Cart Items */}
-            <div className="flex-1 overflow-y-auto space-y-3 mb-4">
+            <div className="flex-1 overflow-y-auto space-y-3">
               {cart.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="bg-gradient-to-br from-gray-100 to-gray-200 w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center">
@@ -521,90 +601,74 @@ const CashierPage: React.FC = () => {
               )}
             </div>
 
-            {/* Professional Total Section */}
-            <div className="border-t-2 border-indigo-200 pt-4 space-y-3">
-              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-3 space-y-1.5">
+            {/* Professional Total Section - Fixed at Bottom */}
+            <div className="mt-4 border-t-2 border-indigo-200 pt-4 space-y-2">
+              {/* Voucher Selection - Moved before Subtotal */}
+              <div className="bg-white rounded-lg p-2.5 border border-indigo-100">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-gray-700">Voucher / Kupon</label>
+                  <button
+                    onClick={() => setShowVoucherModal(true)}
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                  >
+                    Pilih
+                  </button>
+                </div>
+                {selectedVoucher ? (
+                  <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-2 border border-yellow-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-xs font-bold text-orange-900">{selectedVoucher.code}</p>
+                        <p className="text-xs text-orange-600">{selectedVoucher.name}</p>
+                      </div>
+                      <button
+                        onClick={() => setSelectedVoucher(null)}
+                        className="ml-2 text-orange-600 hover:text-orange-700"
+                      >
+                        <FaTimes className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-1.5 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                    <p className="text-xs text-gray-500">Tidak ada voucher dipilih</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-2.5 space-y-1">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600 font-medium">Subtotal</span>
-                  <span className="font-bold text-gray-900">Rp {calculateSubtotal().toLocaleString('id-ID')}</span>
+                  <span className="text-gray-600 text-sm">Subtotal</span>
+                  <span className="font-semibold text-gray-900 text-sm">Rp {calculateSubtotal().toLocaleString('id-ID')}</span>
                 </div>
                 {calculateDiscount() > 0 && (
                   <div className="flex justify-between items-center">
-                    <span className="text-green-600 font-medium flex items-center gap-1">
+                    <span className="text-green-600 text-sm flex items-center gap-1">
                       <FaTag className="w-3 h-3" />
                       Diskon
                     </span>
-                    <span className="font-bold text-green-600">- Rp {calculateDiscount().toLocaleString('id-ID')}</span>
+                    <span className="font-semibold text-green-600 text-sm">- Rp {calculateDiscount().toLocaleString('id-ID')}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600 font-medium">Pajak (0%)</span>
-                  <span className="font-bold text-gray-900">Rp 0</span>
-                </div>
-                <div className="flex justify-between items-center pt-3 border-t-2 border-indigo-200">
-                  <span className="text-lg font-bold text-gray-900">TOTAL</span>
-                  <span className="text-2xl font-bold text-indigo-600">Rp {calculateTotal().toLocaleString('id-ID')}</span>
+                  <span className="text-gray-600 text-sm">Pajak (0%)</span>
+                  <span className="font-semibold text-gray-900 text-sm">Rp 0</span>
                 </div>
               </div>
-              <button
-                onClick={handleCheckout}
-                disabled={cart.length === 0}
-                className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white py-4 rounded-xl font-bold text-lg hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"
-              >
-                <FaCreditCard className="w-5 h-5" />
-                <span>Bayar Sekarang</span>
-              </button>
             </div>
           </div>
         </div>
       </div>
 
       {/* Floating Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 shadow-2xl border-t-4 border-white/20 backdrop-blur-lg z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            {/* Shift Info & Button */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 shadow-2xl border-t-2 border-white/20 backdrop-blur-lg z-40">
+        <div className="max-w-7xl mx-auto px-4 py-2">
+          <div className="flex items-center justify-between gap-3">
+            {/* Quick Shortcuts - Moved to Left */}
             <div className="flex items-center gap-2">
-              {activeShift ? (
-                <div className="bg-green-500/30 border-2 border-green-300 backdrop-blur-sm px-4 py-2 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <FaClock className="w-4 h-4 text-white animate-pulse" />
-                    <div className="text-white">
-                      <p className="text-xs font-semibold">Shift Aktif</p>
-                      <p className="text-xs">{activeShift.shiftType || 'Pagi'}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    setShiftAction('open');
-                    setShowShiftModal(true);
-                  }}
-                  className="flex items-center gap-2 bg-green-500 hover:bg-green-600 backdrop-blur-sm px-4 py-2 rounded-xl transition-all shadow-lg"
-                >
-                  <FaClock className="w-4 h-4 text-white" />
-                  <span className="text-white font-semibold text-sm hidden md:block">
-                    Buka Shift
-                  </span>
-                </button>
-              )}
-              
-              {/* Transaction Counter */}
-              <div className="flex items-center gap-2 text-white mr-4">
-                <FaReceipt className="w-4 h-4" />
-                <div>
-                  <p className="text-xs">Transaksi</p>
-                  <p className="text-sm font-bold">{transactionCount}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Shortcuts */}
-            <div className="flex items-center gap-2 flex-1 justify-center overflow-x-auto">
               <button
                 onClick={() => router.push('/pos/transactions')}
-                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 py-2 rounded-lg transition-all whitespace-nowrap"
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 py-1.5 rounded-lg transition-all whitespace-nowrap"
               >
                 <FaShoppingCart className="w-4 h-4 text-white" />
                 <span className="text-white text-sm font-medium hidden sm:block">Transaksi</span>
@@ -612,7 +676,7 @@ const CashierPage: React.FC = () => {
               
               <button
                 onClick={() => router.push('/inventory')}
-                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 py-2 rounded-lg transition-all whitespace-nowrap"
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 py-1.5 rounded-lg transition-all whitespace-nowrap"
               >
                 <FaBox className="w-4 h-4 text-white" />
                 <span className="text-white text-sm font-medium hidden sm:block">Stok</span>
@@ -620,7 +684,7 @@ const CashierPage: React.FC = () => {
               
               <button
                 onClick={() => router.push('/pos/reports')}
-                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 py-2 rounded-lg transition-all whitespace-nowrap"
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 py-1.5 rounded-lg transition-all whitespace-nowrap"
               >
                 <FaChartBar className="w-4 h-4 text-white" />
                 <span className="text-white text-sm font-medium hidden sm:block">Laporan</span>
@@ -628,15 +692,13 @@ const CashierPage: React.FC = () => {
               
               <button
                 onClick={() => router.push('/customers')}
-                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 py-2 rounded-lg transition-all whitespace-nowrap"
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 py-1.5 rounded-lg transition-all whitespace-nowrap"
               >
                 <FaUsers className="w-4 h-4 text-white" />
                 <span className="text-white text-sm font-medium hidden sm:block">Pelanggan</span>
               </button>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2">
+              
+              {/* Tahan Button */}
               <button
                 onClick={() => {
                   if (cart.length > 0) {
@@ -646,18 +708,16 @@ const CashierPage: React.FC = () => {
                   }
                 }}
                 disabled={cart.length === 0}
-                className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2 rounded-xl transition-all shadow-lg"
+                className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-1.5 rounded-lg transition-all whitespace-nowrap"
               >
                 <FaClock className="w-4 h-4 text-white" />
-                <span className="text-white font-semibold text-xs hidden lg:block">
-                  Tahan
-                </span>
+                <span className="text-white text-sm font-medium hidden sm:block">Tahan</span>
               </button>
               
               {/* Pending Transactions */}
               <button
                 onClick={() => setShowPendingModal(true)}
-                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 py-2 rounded-xl transition-all group"
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 py-1.5 rounded-lg transition-all whitespace-nowrap"
               >
                 <div className="relative">
                   <FaReceipt className="w-4 h-4 text-white" />
@@ -667,9 +727,22 @@ const CashierPage: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <span className="text-white font-semibold text-xs hidden lg:block">
-                  Transaksi Gantung
-                </span>
+                <span className="text-white text-sm font-medium hidden sm:block">Transaksi Gantung</span>
+              </button>
+            </div>
+
+            {/* Bayar Sekarang Button - Moved from Cart with Total */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCheckout}
+                disabled={cart.length === 0}
+                className="flex items-center gap-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed px-8 py-2 rounded-lg transition-all shadow-lg whitespace-nowrap min-w-[200px]"
+              >
+                <FaCreditCard className="w-4 h-4 text-white" />
+                <div className="flex flex-col items-start">
+                  <span className="text-white text-xs font-medium">Bayar Sekarang</span>
+                  <span className="text-white text-base font-bold leading-tight">Rp {calculateTotal().toLocaleString('id-ID')}</span>
+                </div>
               </button>
               
               {activeShift && (
@@ -728,63 +801,14 @@ const CashierPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Add Member Button */}
+            {/* Add Member Button - Now opens Wizard */}
             <button
-              onClick={() => setShowAddMemberForm(!showAddMemberForm)}
+              onClick={() => setShowAddMemberForm(true)}
               className="w-full mb-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 rounded-xl font-semibold hover:from-green-600 hover:to-emerald-600 transition-all flex items-center justify-center gap-2"
             >
               <FaPlus className="w-4 h-4" />
-              {showAddMemberForm ? 'Batal Tambah Member' : 'Tambah Member Baru'}
+              Tambah Member Baru
             </button>
-
-            {/* Add Member Form */}
-            {showAddMemberForm && (
-              <div className="mb-4 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
-                <h3 className="font-bold text-gray-900 mb-3">Data Member Baru</h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Nama Lengkap</label>
-                    <input
-                      type="text"
-                      placeholder="Masukkan nama lengkap"
-                      value={newMember.name}
-                      onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
-                      className="w-full px-3 py-2 border-2 border-green-200 rounded-lg focus:ring-2 focus:ring-green-300 focus:border-green-400 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Nomor Telepon</label>
-                    <input
-                      type="tel"
-                      placeholder="08xxxxxxxxxx"
-                      value={newMember.phone}
-                      onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
-                      className="w-full px-3 py-2 border-2 border-green-200 rounded-lg focus:ring-2 focus:ring-green-300 focus:border-green-400 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Diskon Member (%)</label>
-                    <select
-                      value={newMember.discount}
-                      onChange={(e) => setNewMember({ ...newMember, discount: parseInt(e.target.value) })}
-                      className="w-full px-3 py-2 border-2 border-green-200 rounded-lg focus:ring-2 focus:ring-green-300 focus:border-green-400 text-sm"
-                    >
-                      <option value={5}>5%</option>
-                      <option value={10}>10%</option>
-                      <option value={15}>15%</option>
-                      <option value={20}>20%</option>
-                      <option value={25}>25%</option>
-                    </select>
-                  </div>
-                  <button
-                    onClick={handleAddMember}
-                    className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-semibold transition-all"
-                  >
-                    Simpan Member
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Members List */}
             <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -1250,6 +1274,21 @@ const CashierPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Add Customer Wizard - Integrated from Customers Module */}
+      <AddCustomerWizard
+        isOpen={showAddMemberForm}
+        onClose={() => {
+          setShowAddMemberForm(false);
+          setNewMember({ name: '', phone: '', discount: 10 });
+        }}
+        onSuccess={() => {
+          setShowAddMemberForm(false);
+          setNewMember({ name: '', phone: '', discount: 10 });
+          fetchMembers(); // Refresh members list
+          alert('Member baru berhasil ditambahkan!');
+        }}
+      />
     </DashboardLayout>
   );
 };

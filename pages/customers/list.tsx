@@ -23,26 +23,37 @@ const CustomerListPage: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Fetch customer data
-        const response = await fetch('/api/customers');
+        // Fetch customer data from new API
+        const response = await fetch('/api/customers/list');
         if (!response.ok) {
           throw new Error('Failed to fetch customers');
         }
         const data = await response.json();
-        setCustomers(data.customers || mockCustomers);
         
-        // Fetch statistics
-        const statsResponse = await fetch('/api/customers/statistics');
-        if (!statsResponse.ok) {
-          throw new Error('Failed to fetch statistics');
+        if (data.success) {
+          setCustomers(data.data.customers || []);
+          
+          // Set statistics from API response
+          if (data.data.statistics) {
+            const stats = data.data.statistics;
+            setStatistics({
+              totalCustomers: parseInt(stats.totalCustomers) || 0,
+              totalIndividual: parseInt(stats.totalIndividual) || 0,
+              totalCorporate: parseInt(stats.totalCorporate) || 0,
+              totalRevenue: parseFloat(stats.totalRevenue) || 0,
+              averageSpending: parseFloat(stats.averageSpent) || 0,
+              activeCustomers: parseInt(stats.totalCustomers) || 0,
+              newCustomersThisMonth: 0,
+              topSpenders: []
+            });
+          }
+        } else {
+          console.error('API returned error:', data.error);
+          setCustomers([]);
         }
-        const statsData = await statsResponse.json();
-        setStatistics(statsData || mockCustomerSummary);
       } catch (error) {
         console.error('Error fetching customer data:', error);
-        // Fallback to mock data
-        setCustomers(mockCustomers);
-        setStatistics(mockCustomerSummary);
+        setCustomers([]);
       } finally {
         setIsLoading(false);
       }

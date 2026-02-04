@@ -50,21 +50,7 @@ ChartJS.register(
   BarElement
 );
 
-// Mock data for expense transactions
-const mockExpenseTransactions = [
-  { id: "EXP-001", date: "27 Mar 2025", description: "Pembelian Stok Obat", amount: 8500000, category: "Pembelian Produk", paymentMethod: "Transfer" },
-  { id: "EXP-002", date: "25 Mar 2025", description: "Gaji Karyawan", amount: 7200000, category: "Gaji", paymentMethod: "Transfer" },
-  { id: "EXP-003", date: "24 Mar 2025", description: "Biaya Internet", amount: 750000, category: "Operasional", paymentMethod: "Transfer" },
-  { id: "EXP-004", date: "22 Mar 2025", description: "Iklan Facebook", amount: 500000, category: "Marketing", paymentMethod: "Card" },
-  { id: "EXP-005", date: "20 Mar 2025", description: "Biaya Listrik", amount: 1250000, category: "Operasional", paymentMethod: "Transfer" },
-  { id: "EXP-006", date: "18 Mar 2025", description: "Pembelian Alat Tulis", amount: 350000, category: "Operasional", paymentMethod: "Cash" },
-  { id: "EXP-007", date: "15 Mar 2025", description: "Perawatan AC", amount: 800000, category: "Maintenance", paymentMethod: "Cash" },
-  { id: "EXP-008", date: "13 Mar 2025", description: "Pembelian Komputer Baru", amount: 12000000, category: "Pembelian Aset", paymentMethod: "Transfer" },
-  { id: "EXP-009", date: "10 Mar 2025", description: "Uang Makan Staff", amount: 1800000, category: "Operasional", paymentMethod: "Cash" },
-  { id: "EXP-010", date: "08 Mar 2025", description: "Iklan Instagram", amount: 750000, category: "Marketing", paymentMethod: "Card" },
-  { id: "EXP-011", date: "05 Mar 2025", description: "Pelatihan Karyawan", amount: 3500000, category: "Gaji", paymentMethod: "Transfer" },
-  { id: "EXP-012", date: "03 Mar 2025", description: "Pajak Penghasilan", amount: 4500000, category: "Pajak", paymentMethod: "Transfer" },
-];
+// Mock data removed - using real backend API
 
 // Chart data for expense trends
 const expenseChartData = {
@@ -140,7 +126,7 @@ const getCategoryIcon = (category: string) => {
 
 const FinanceExpensesPage: NextPage = () => {
   // State variables
-  const [expenseTransactions, setExpenseTransactions] = useState<any[]>(mockExpenseTransactions);
+  const [expenseTransactions, setExpenseTransactions] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({
@@ -203,11 +189,7 @@ const FinanceExpensesPage: NextPage = () => {
       setError(null);
       
       try {
-        // Set fallback data first
-        setExpenseTransactions(mockExpenseTransactions);
-        setTotalExpense(mockExpenseTransactions.reduce((sum, item) => sum + item.amount, 0));
-        
-        // Try to fetch from API
+        // Fetch from API
         const response = await fetch('/api/finance/expenses');
         
         if (response.ok) {

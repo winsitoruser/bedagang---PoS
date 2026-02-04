@@ -4,7 +4,7 @@ import {
   FaBuilding, FaChartPie, FaTags, FaTruckLoading,
   FaFileInvoiceDollar, FaMoneyBillWave, FaExclamationTriangle, FaCreditCard,
   FaFileExport, FaFilePdf, FaFileExcel, FaFileCsv, FaFilter, FaSearch,
-  FaArrowRight
+  FaArrowRight, FaChartBar
 } from 'react-icons/fa';
 import Link from 'next/link';
 // import { useTranslation } from '@/lib/i18n';
@@ -228,13 +228,13 @@ const Finance = () => {
     expense: [0, 0, 0, 0, 0, 0]
   });
   
-  // Default chart data
+  // Chart data from backend
   const [monthlySummaryData, setMonthlySummaryData] = useState({
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+    labels: [],
     datasets: [
       {
         label: 'Pendapatan',
-        data: [40000000, 52000000, 60000000, 65000000, 70000000, 78000000],
+        data: [],
         borderColor: chartColors.primary,
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         tension: 0.3,
@@ -242,7 +242,7 @@ const Finance = () => {
       },
       {
         label: 'Pengeluaran',
-        data: [30000000, 40000000, 45000000, 50000000, 55000000, 60000000],
+        data: [],
         borderColor: chartColors.secondary,
         backgroundColor: 'rgba(249, 115, 22, 0.1)',
         tension: 0.3,
@@ -252,10 +252,10 @@ const Finance = () => {
   });
   
   const [invoiceDebtChartData, setInvoiceDebtChartData] = useState({
-    labels: ['Lunas', 'Belum Lunas', 'Jatuh Tempo'],
+    labels: [],
     datasets: [
       {
-        data: [10, 5, 2],
+        data: [],
         backgroundColor: [
           'rgba(16, 185, 129, 0.7)',  // Green
           'rgba(239, 68, 68, 0.7)',   // Red
@@ -271,11 +271,11 @@ const Finance = () => {
     ],
   });
   
-  const [revenueByCategory, setRevenueByCategory] = useState({
-    labels: ['Obat Resep', 'OTC', 'Konsultasi', 'Alat Kesehatan', 'Lainnya'],
+  const [revenueByCategory, setRevenueByCategory] = useState<any>({
+    labels: [],
     datasets: [
       {
-        data: [525000000, 218750000, 87500000, 21875000, 21875000],
+        data: [],
         backgroundColor: [
           'rgba(239, 68, 68, 0.7)',   // Red
           'rgba(249, 115, 22, 0.7)',  // Orange
@@ -301,92 +301,36 @@ const Finance = () => {
     setError(null);
     
     try {
-      // Fallback data untuk jika ada kesalahan koneksi atau respons API
-      const fallbackData = {
-        totalIncome: 71500000,
-        totalExpenses: 54250000, 
-        netProfit: 17250000,
-        cashOnHand: 10350000,
-        accountsReceivable: 35000000,
-        accountsPayable: 24500000,
-        bankAccounts: 24500000,
-        inventoryValue: 125000000,
-        assetValue: 194850000,
-        profitMargin: 24.13
-      };
-      
-      // Fallback invoice debt data
-      const fallbackInvoiceDebt = {
-        labels: ['Lunas', 'Belum Lunas', 'Jatuh Tempo'],
-        values: [60, 30, 10]
-      };
-      
-      // Fallback invoice summary
-      const fallbackInvoiceSummary = {
-        overdueInvoices: 35000000,
-        upcomingDue: 24500000,
-        totalInvoices: 17,
-        overdueCount: 2,
-        criticalOverdue: 1
-      };
-      
-      // Fallback partial payments
-      const fallbackPartialPayments = [
-        { id: 'default-1', supplier: 'PT Farmasi Utama', total: 35000000, paid: 21000000, percentage: 60, dueDate: '25 Apr 2025' },
-        { id: 'default-2', supplier: 'PT Medika Sejahtera', total: 24500000, paid: 12250000, percentage: 50, dueDate: '30 Apr 2025' }
-      ];
-      
-      // Fallback unpaid invoices
-      const fallbackUnpaidInvoices = [
-        { id: 'default-1', supplier: 'PT Farmasi Utama', total: 35000000, paid: 21000000, percentage: 60, dueDate: '25 Apr 2025' },
-        { id: 'default-2', supplier: 'PT Medika Sejahtera', total: 24500000, paid: 12250000, percentage: 50, dueDate: '30 Apr 2025' },
-        { id: 'default-3', supplier: 'PT Alkes Indonesia', total: 18750000, paid: 9375000, percentage: 50, dueDate: '05 May 2025' }
-      ];
-      
-      // Fallback transactions
-      const fallbackTransactions = [
-        { id: 'tx-1', date: '30 Apr 2025', description: 'Penjualan Obat', amount: 5270000, type: 'income', category: 'Penjualan' },
-        { id: 'tx-2', date: '29 Apr 2025', description: 'Pembayaran Supplier', amount: 12350000, type: 'expense', category: 'Supplier' },
-        { id: 'tx-3', date: '28 Apr 2025', description: 'Konsultasi Pasien', amount: 1750000, type: 'income', category: 'Jasa' }
-      ];
-      
-      // Fallback income vs expense monthly data
-      const fallbackIncomeVsExpenseMonthly = {
-        months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-        income: [65000000, 68000000, 72000000, 71500000, 70000000, 73000000],
-        expense: [48000000, 52000000, 49000000, 54250000, 51000000, 53000000]
-      };
-      
-      // Attempt to fetch data dari API - gunakan endpoint API yang terintegrasi dengan database
-      const summaryResponse = await fetch(`/api/finance/dashboard-complete`, {
+      // Fetch real data from backend API
+      const statsResponse = await fetch(`/api/finance/dashboard-stats?period=${period}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Add timeout to prevent long loading times
         signal: AbortSignal.timeout(10000)
       });
       
-      // Jika API merespons dengan sukses
-      if (summaryResponse.ok) {
-        const summaryData = await summaryResponse.json();
-        console.log('Finance data from API:', summaryData);
+      // Process API response
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        console.log('Finance stats from backend:', statsData);
         
-        if (summaryData.data) {
-          // Use data from API response
-          const apiData = summaryData.data;
+        if (statsData.success && statsData.data) {
+          const apiData = statsData.data;
           
-          // Update financial data
-          setFinancialData({
-            totalIncome: apiData.totalIncome || 0,
-            totalExpenses: apiData.totalExpenses || 0,
-            netProfit: apiData.netProfit || 0,
-            cashOnHand: apiData.cashOnHand || 0,
-            accountsReceivable: apiData.accountsReceivable || 0,
-            accountsPayable: apiData.accountsPayable || 0,
-            assetValue: apiData.assetValue || 0,
-            inventoryValue: apiData.inventoryValue || 0
-          });
+          // Update financial data from overview
+          if (apiData.overview) {
+            setFinancialData({
+              totalIncome: apiData.overview.totalIncome || 0,
+              totalExpenses: apiData.overview.totalExpenses || 0,
+              netProfit: apiData.overview.netProfit || 0,
+              cashOnHand: apiData.overview.cashOnHand || 0,
+              accountsReceivable: apiData.overview.accountsReceivable || 0,
+              accountsPayable: apiData.overview.accountsPayable || 0,
+              assetValue: apiData.overview.totalAssets || 0,
+              inventoryValue: 0
+            });
+          }
           
           console.log('Financial data updated:', {
             totalIncome: apiData.totalIncome,
@@ -394,38 +338,83 @@ const Finance = () => {
             netProfit: apiData.netProfit
           });
           
-          // Update invoice debt chart data
-          if (apiData.invoiceDebtData && apiData.invoiceDebtData.labels && apiData.invoiceDebtData.values) {
+          // Update invoice debt data from overview
+          if (apiData.overview) {
             setInvoiceDebtData({
-              labels: apiData.invoiceDebtData.labels,
+              totalUnpaid: apiData.overview.accountsPayable || 0,
+              overdueInvoices: 0,
+              upcomingDue: 0,
+              totalInvoices: 0,
+              overdueCount: 0,
+              criticalOverdue: 0
+            });
+          }
+          
+          // Update revenue by category from breakdown
+          if (apiData.breakdown && apiData.breakdown.incomeByCategory) {
+            const categories = Object.keys(apiData.breakdown.incomeByCategory);
+            const values = Object.values(apiData.breakdown.incomeByCategory) as number[];
+            
+            setRevenueByCategory({
+              labels: categories,
               datasets: [
                 {
-                  data: apiData.invoiceDebtData.values,
+                  data: values,
                   backgroundColor: [
-                    'rgba(34, 197, 94, 0.7)',  // Green
-                    'rgba(239, 68, 68, 0.7)',   // Red
-                    'rgba(249, 115, 22, 0.7)',  // Orange
+                    'rgba(239, 68, 68, 0.7)',
+                    'rgba(249, 115, 22, 0.7)',
+                    'rgba(251, 146, 60, 0.7)',
+                    'rgba(252, 165, 165, 0.7)',
+                    'rgba(254, 226, 226, 0.7)',
                   ],
                   borderColor: [
-                    '#22c55e',
                     '#ef4444',
                     '#f97316',
+                    '#fb923c',
+                    '#fca5a5',
+                    '#fee2e2',
                   ],
                   borderWidth: 1,
                 },
               ],
             });
-            console.log('Invoice debt data updated:', apiData.invoiceDebtData);
           }
           
-          // Update income vs expense monthly data
-          if (apiData.incomeVsExpenseMonthly) {
+          // Update income vs expense monthly data and chart
+          if (apiData.trends && apiData.trends.monthly) {
+            const monthlyData = apiData.trends.monthly;
+            const months = monthlyData.map((m: any) => m.month);
+            const income = monthlyData.map((m: any) => m.income);
+            const expense = monthlyData.map((m: any) => m.expense);
+            
             setIncomeVsExpenseMonthly({
-              months: apiData.incomeVsExpenseMonthly.months || [],
-              income: apiData.incomeVsExpenseMonthly.income || [],
-              expense: apiData.incomeVsExpenseMonthly.expense || []
+              months,
+              income,
+              expense
             });
-            console.log('Monthly trends updated:', apiData.incomeVsExpenseMonthly);
+            
+            setMonthlySummaryData({
+              labels: months,
+              datasets: [
+                {
+                  label: 'Pendapatan',
+                  data: income,
+                  borderColor: chartColors.primary,
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  tension: 0.3,
+                  fill: true,
+                },
+                {
+                  label: 'Pengeluaran',
+                  data: expense,
+                  borderColor: chartColors.secondary,
+                  backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                  tension: 0.3,
+                  fill: true,
+                },
+              ],
+            });
+            console.log('Monthly trends updated:', monthlyData);
           }
           
           // Set transactions - always use API data, even if empty
@@ -483,66 +472,15 @@ const Finance = () => {
           }
           
         } else {
-          // Fallback ke mock data jika struktur response tidak sesuai
-          setFinancialData(fallbackData);
-          setInvoiceDebtData(fallbackInvoiceDebt);
-          setPartialPayments(fallbackPartialPayments);
-          setUnpaidInvoices(fallbackUnpaidInvoices);
-          setRecentTransactions(fallbackTransactions);
-          setIncomeVsExpenseMonthly(fallbackIncomeVsExpenseMonthly);
+          console.warn('No data in API response');
         }
       } else {
-        // Jika response tidak OK, gunakan fallback data
-        console.error("Error fetching finance data:", summaryResponse.statusText);
-        setFinancialData(fallbackData);
-        setInvoiceDebtData(fallbackInvoiceDebt);
-        setPartialPayments(fallbackPartialPayments);
-        setUnpaidInvoices(fallbackUnpaidInvoices);
-        setRecentTransactions(fallbackTransactions);
-        setIncomeVsExpenseMonthly(fallbackIncomeVsExpenseMonthly);
+        console.error("Error fetching finance data:", statsResponse.statusText);
+        setError('Failed to load finance data from backend');
       }
     } catch (err) {
       console.error("Error in fetchData:", err);
       setError("Terjadi kesalahan saat mengambil data keuangan. Silakan coba lagi nanti.");
-      
-      // Set fallback data jika terjadi error
-      setFinancialData({
-        totalIncome: 71500000,
-        totalExpenses: 54250000, 
-        netProfit: 17250000,
-        cashOnHand: 10350000,
-        accountsReceivable: 35000000,
-        accountsPayable: 24500000,
-        bankAccounts: 24500000,
-        inventoryValue: 125000000,
-        assetValue: 194850000,
-        profitMargin: 24.13
-      });
-      
-      setInvoiceDebtData({
-        labels: ['Lunas', 'Belum Lunas', 'Jatuh Tempo'],
-        datasets: [
-          {
-            data: [60, 30, 10],
-            backgroundColor: [
-              'rgba(34, 197, 94, 0.7)',  // Green
-              'rgba(239, 68, 68, 0.7)',   // Red
-              'rgba(249, 115, 22, 0.7)',  // Orange
-            ],
-            borderColor: [
-              '#22c55e',
-              '#ef4444',
-              '#f97316',
-            ],
-            borderWidth: 1,
-          },
-        ],
-      });
-      
-      setIncomeVsExpenseMonthly(fallbackIncomeVsExpenseMonthly);
-      setPartialPayments(fallbackPartialPayments);
-      setUnpaidInvoices(fallbackUnpaidInvoices);
-      setRecentTransactions(fallbackTransactions);
     } finally {
       setLoading(false);
     }
@@ -555,11 +493,11 @@ const Finance = () => {
   }, [fetchData]);
 
   // Handle filter changes  
-  const handleBranchChange = (e) => {
+  const handleBranchChange = (e: any) => {
     setBranch(e.target.value);
   };
   
-  const handlePeriodChange = (e) => {
+  const handlePeriodChange = (e: any) => {
     setPeriod(e.target.value);
   };
   
@@ -569,7 +507,7 @@ const Finance = () => {
 
   return (
     <ErrorBoundary>
-      <FinanceLayout activeModule="/finance">
+      <FinanceLayout>
         {/* Export Modal */}
         <Modal 
           show={showExportModal} 
@@ -635,8 +573,32 @@ const Finance = () => {
         {/* Content when not loading or error */}
         {!loading && !error && (
           <div className="container mx-auto px-4 py-6">
+            {/* Header Card - Professional & Elegant */}
+            <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-xl shadow-lg p-6 md:p-8 mb-6">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+                    <FaWallet className="w-7 h-7 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white">Keuangan</h1>
+                    <p className="text-green-100 mt-1">Dashboard manajemen keuangan dan laporan</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowExportModal(true)}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-medium rounded-lg transition-all backdrop-blur"
+                  >
+                    <FaFileExport className="w-4 h-4" />
+                    <span className="hidden sm:inline">Export</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Filter Bar */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-red-100 mb-6">
+            <div className="bg-white p-4 rounded-lg shadow-sm border mb-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="flex items-center gap-2">
                   <FaCalendarAlt className="text-red-500" />
@@ -698,178 +660,227 @@ const Finance = () => {
             {/* Financial Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               {/* Total Income */}
-              <div className="bg-white p-4 rounded-lg shadow-md">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="bg-red-100 p-3 rounded-full">
-                    <FaArrowUp className="text-red-500 text-xl" />
+              <div className="bg-white p-5 rounded-lg shadow-md">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Income Bulan Ini</span>
+                  <div className="bg-red-100 p-2.5 rounded-lg">
+                    <FaArrowUp className="text-red-500 text-lg" />
                   </div>
-                  <span className="text-gray-500 font-medium">{t('finance.totalIncome')}</span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">
+                <div className="text-3xl font-bold text-gray-900 mb-2">
                   {formatRupiah(financialData.totalIncome)}
                 </div>
-                <div className="flex items-center text-green-500">
-                  <FaArrowUp className="mr-1" />
-                  <span>+15.3%</span>
-                  <span className="text-gray-500 text-sm ml-1">dari bulan lalu</span>
+                <div className="flex items-center text-green-600 text-sm">
+                  <FaArrowUp className="mr-1 text-xs" />
+                  <span className="font-medium">+15.3%</span>
+                  <span className="text-gray-500 ml-1">dari bulan lalu</span>
                 </div>
               </div>
               
               {/* Total Expenses */}
-              <div className="bg-white p-4 rounded-lg shadow-md">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="bg-orange-100 p-3 rounded-full">
-                    <FaArrowDown className="text-orange-500 text-xl" />
+              <div className="bg-white p-5 rounded-lg shadow-md">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Tagihan Bulan Ini</span>
+                  <div className="bg-orange-100 p-2.5 rounded-lg">
+                    <FaArrowDown className="text-orange-500 text-lg" />
                   </div>
-                  <span className="text-gray-500 font-medium">{t('finance.totalExpenses')}</span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">
+                <div className="text-3xl font-bold text-gray-900 mb-2">
                   {formatRupiah(financialData.totalExpenses)}
                 </div>
-                <div className="flex items-center text-red-500">
-                  <FaArrowUp className="mr-1" />
-                  <span>7.8% dari bulan lalu</span>
+                <div className="flex items-center text-red-600 text-sm">
+                  <FaArrowUp className="mr-1 text-xs" />
+                  <span className="font-medium">+7.8%</span>
+                  <span className="text-gray-500 ml-1">dari bulan lalu</span>
                 </div>
               </div>
               
               {/* Net Profit */}
-              <div className="bg-white p-4 rounded-lg shadow-md">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="bg-green-100 p-3 rounded-full">
-                    <FaWallet className="text-green-500 text-xl" />
+              <div className="bg-white p-5 rounded-lg shadow-md">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Transaksi Minggu Ini</span>
+                  <div className="bg-green-100 p-2.5 rounded-lg">
+                    <FaWallet className="text-green-500 text-lg" />
                   </div>
-                  <span className="text-gray-500 font-medium">{t('finance.netProfit')}</span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">
+                <div className="text-3xl font-bold text-gray-900 mb-2">
                   {formatRupiah(financialData.netProfit)}
                 </div>
-                <div className="flex items-center text-green-500">
-                  <FaArrowUp className="mr-1" />
-                  <span>15.3% dari bulan lalu</span>
+                <div className="flex items-center text-green-600 text-sm">
+                  <FaArrowUp className="mr-1 text-xs" />
+                  <span className="font-medium">+15.3%</span>
+                  <span className="text-gray-500 ml-1">dari minggu lalu</span>
                 </div>
               </div>
             </div>
 
-            {/* Invoice Debt Status */}
-            <div className="bg-white rounded-lg shadow-md p-5 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">{t('finance.invoiceStatus')}</h2>
-                <Link href="/finance/invoices" className="text-red-500 hover:text-red-700 font-medium flex items-center">
-                  <span>Lihat Semua Faktur</span>
-                  <FaArrowRight className="ml-1" />
+            {/* Quick Access Menu */}
+            <div className="mb-6">
+              <h2 className="text-base font-bold text-gray-800 uppercase tracking-wide mb-5">Menu Keuangan</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Link href="/finance/piutang" className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-all border-l-4 border-blue-500 group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="bg-blue-100 p-2.5 rounded-lg group-hover:bg-blue-200 transition-colors">
+                      <FaFileInvoiceDollar className="text-blue-600 text-lg" />
+                    </div>
+                    <FaArrowRight className="text-gray-400 text-sm group-hover:text-blue-500 transition-colors" />
+                  </div>
+                  <h3 className="font-bold text-gray-800 mb-1 text-sm">Piutang</h3>
+                  <p className="text-xs text-gray-600">Kelola tagihan pelanggan</p>
+                </Link>
+
+                <Link href="/finance/hutang" className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-all border-l-4 border-red-500 group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="bg-red-100 p-2.5 rounded-lg group-hover:bg-red-200 transition-colors">
+                      <FaMoneyBillWave className="text-red-600 text-lg" />
+                    </div>
+                    <FaArrowRight className="text-gray-400 text-sm group-hover:text-red-500 transition-colors" />
+                  </div>
+                  <h3 className="font-bold text-gray-800 mb-1 text-sm">Hutang</h3>
+                  <p className="text-xs text-gray-600">Kelola hutang supplier</p>
+                </Link>
+
+                <Link href="/finance/profit" className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-all border-l-4 border-green-500 group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="bg-green-100 p-2.5 rounded-lg group-hover:bg-green-200 transition-colors">
+                      <FaChartPie className="text-green-600 text-lg" />
+                    </div>
+                    <FaArrowRight className="text-gray-400 text-sm group-hover:text-green-500 transition-colors" />
+                  </div>
+                  <h3 className="font-bold text-gray-800 mb-1 text-sm">Analisa Profit</h3>
+                  <p className="text-xs text-gray-600">Pantau keuntungan</p>
+                </Link>
+
+                <Link href="/finance/invoices" className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-all border-l-4 border-purple-500 group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="bg-purple-100 p-2.5 rounded-lg group-hover:bg-purple-200 transition-colors">
+                      <FaFileInvoiceDollar className="text-purple-600 text-lg" />
+                    </div>
+                    <FaArrowRight className="text-gray-400 text-sm group-hover:text-purple-500 transition-colors" />
+                  </div>
+                  <h3 className="font-bold text-gray-800 mb-1 text-sm">Invoice</h3>
+                  <p className="text-xs text-gray-600">Kelola faktur penjualan</p>
+                </Link>
+
+                <Link href="/finance/expenses" className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-all border-l-4 border-orange-500 group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="bg-orange-100 p-2.5 rounded-lg group-hover:bg-orange-200 transition-colors">
+                      <FaTruckLoading className="text-orange-600 text-lg" />
+                    </div>
+                    <FaArrowRight className="text-gray-400 text-sm group-hover:text-orange-500 transition-colors" />
+                  </div>
+                  <h3 className="font-bold text-gray-800 mb-1 text-sm">Pengeluaran</h3>
+                  <p className="text-xs text-gray-600">Catat biaya operasional</p>
+                </Link>
+
+                <Link href="/finance/income" className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-all border-l-4 border-teal-500 group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="bg-teal-100 p-2.5 rounded-lg group-hover:bg-teal-200 transition-colors">
+                      <FaWallet className="text-teal-600 text-lg" />
+                    </div>
+                    <FaArrowRight className="text-gray-400 text-sm group-hover:text-teal-500 transition-colors" />
+                  </div>
+                  <h3 className="font-bold text-gray-800 mb-1 text-sm">Pendapatan</h3>
+                  <p className="text-xs text-gray-600">Catat pemasukan</p>
+                </Link>
+
+                <Link href="/finance/profit-loss" className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-all border-l-4 border-indigo-500 group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="bg-indigo-100 p-2.5 rounded-lg group-hover:bg-indigo-200 transition-colors">
+                      <FaChartBar className="text-indigo-600 text-lg" />
+                    </div>
+                    <FaArrowRight className="text-gray-400 text-sm group-hover:text-indigo-500 transition-colors" />
+                  </div>
+                  <h3 className="font-bold text-gray-800 mb-1 text-sm">Laba Rugi</h3>
+                  <p className="text-xs text-gray-600">Laporan keuangan</p>
+                </Link>
+
+                <Link href="/finance/transactions" className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-all border-l-4 border-pink-500 group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="bg-pink-100 p-2.5 rounded-lg group-hover:bg-pink-200 transition-colors">
+                      <FaCreditCard className="text-pink-600 text-lg" />
+                    </div>
+                    <FaArrowRight className="text-gray-400 text-sm group-hover:text-pink-500 transition-colors" />
+                  </div>
+                  <h3 className="font-bold text-gray-800 mb-1 text-sm">Transaksi</h3>
+                  <p className="text-xs text-gray-600">Riwayat transaksi</p>
                 </Link>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div className="bg-red-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-600 text-sm">Faktur Belum Lunas</p>
-                      <p className="text-xl font-bold text-gray-900">{formatRupiah(invoiceDebtData?.totalUnpaid || 0)}</p>
-                    </div>
-                    <div className="bg-red-100 p-3 rounded-full">
-                      <FaFileInvoiceDollar className="text-red-500" />
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2">Total {invoiceDebtData?.totalInvoices || 0} faktur</p>
+            </div>
+
+            {/* Invoice Status & Income vs Expense - Side by Side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Invoice Debt Status - Left Side (1/2) */}
+              <div className="bg-white rounded-lg shadow-md p-5">
+                <div className="flex justify-between items-center mb-5">
+                  <h2 className="text-base font-bold text-gray-800 uppercase tracking-wide">{t('finance.invoiceStatus')}</h2>
+                  <Link href="/finance/invoices" className="text-red-500 hover:text-red-700 font-semibold flex items-center text-xs">
+                    <span>Lihat Semua</span>
+                    <FaArrowRight className="ml-1.5 text-xs" />
+                  </Link>
                 </div>
                 
-                <div className="bg-gradient-to-br from-orange-50 to-red-50/30 p-4 rounded-lg border border-orange-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-600 text-sm">Faktur Jatuh Tempo</p>
-                      <p className="text-xl font-bold text-gray-900">{formatRupiah(invoiceDebtData?.overdueInvoices || 0)}</p>
-                    </div>
-                    <div className="bg-gradient-to-br from-orange-100 to-red-100 p-3 rounded-full">
-                      <FaExclamationTriangle className="text-red-600" />
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2">{invoiceDebtData?.overdueCount || 0} faktur telah jatuh tempo</p>
-                </div>
-                
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-600 text-sm">Menunggu Jatuh Tempo</p>
-                      <p className="text-xl font-bold text-gray-900">{formatRupiah(invoiceDebtData?.upcomingDue || 0)}</p>
-                    </div>
-                    <div className="bg-blue-100 p-3 rounded-full">
-                      <FaCalendarAlt className="text-blue-500" />
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2">Akan jatuh tempo dalam 30 hari</p>
-                </div>
-              </div>
-              
-              {/* Doughnut Chart */}
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <h3 className="text-sm font-medium text-gray-600 mb-3">Distribusi Status Faktur</h3>
-                <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-                  <div className="w-48 h-48">
-                    {typeof window !== 'undefined' && (
-                      <Pie 
-                        data={invoiceDebtChartData}
-                        options={{
-                          plugins: {
-                            legend: {
-                              position: 'right',
-                              labels: {
-                                usePointStyle: true,
-                                pointStyle: 'circle'
-                              }
-                            },
-                            tooltip: {
-                              callbacks: {
-                                label: function(context) {
-                                  const label = context.label || '';
-                                  const value = context.raw || 0;
-                                  return `${label}: ${value}`;
+                {/* Doughnut Chart */}
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Distribusi Status Faktur</h3>
+                  <div className="flex items-center justify-center gap-6">
+                    <div className="w-40 h-40">
+                      {typeof window !== 'undefined' && (
+                        <Pie 
+                          data={invoiceDebtChartData}
+                          options={{
+                            plugins: {
+                              legend: {
+                                display: false
+                              },
+                              tooltip: {
+                                callbacks: {
+                                  label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    return `${label}: ${value}`;
+                                  }
                                 }
                               }
-                            }
-                          },
-                          maintainAspectRatio: false,
-                          cutout: '65%' // Ini membuat pie chart menjadi doughnut
-                        }}
-                      />
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                      <span className="text-sm">Lunas: {invoiceDebtChartData.datasets[0].data[0]} faktur</span>
+                            },
+                            maintainAspectRatio: false,
+                            cutout: '65%'
+                          }}
+                        />
+                      )}
                     </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-orange-500 mr-2"></div>
-                      <span className="text-sm">Belum Lunas: {invoiceDebtChartData.datasets[0].data[1]} faktur</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-                      <span className="text-sm">Jatuh Tempo: {invoiceDebtChartData.datasets[0].data[2]} faktur</span>
+                    <div className="flex flex-col gap-2.5">
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                        <span className="text-sm font-medium text-gray-700">Lunas: <span className="font-bold">{invoiceDebtChartData.datasets[0].data[0]}</span></span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 rounded-full bg-orange-500 mr-2"></div>
+                        <span className="text-sm font-medium text-gray-700">Belum Lunas: <span className="font-bold">{invoiceDebtChartData.datasets[0].data[1]}</span></span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                        <span className="text-sm font-medium text-gray-700">Jatuh Tempo: <span className="font-bold">{invoiceDebtChartData.datasets[0].data[2]}</span></span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            {/* Billing Subscription Status Widget */}
-            <div className="mb-6">
-              <BillingDashboardWidget />
-            </div>
-            
-            {/* Pendapatan vs Pengeluaran per bulan */}
-            <div className="bg-white rounded-lg shadow-md p-5 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-md font-medium text-gray-800">Pendapatan vs Pengeluaran (6 Bulan Terakhir)</h3>
-                <div className="flex space-x-2">
-                  <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-1 px-2 rounded">
-                    <FaFileCsv className="inline mr-1" /> CSV
+
+              {/* Pendapatan vs Pengeluaran - Right Side (1/2) */}
+              <div className="bg-white rounded-lg shadow-md p-5">
+              <div className="flex justify-between items-center mb-5">
+                <h3 className="text-base font-bold text-gray-800 uppercase tracking-wide">Pendapatan vs Pengeluaran</h3>
+                <div className="flex gap-2">
+                  <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-1.5 px-3 rounded-md transition-colors">
+                    <FaFileCsv className="inline mr-1 text-xs" /> CSV
                   </button>
-                  <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-1 px-2 rounded">
-                    <FaFilePdf className="inline mr-1" /> PDF
+                  <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-1.5 px-3 rounded-md transition-colors">
+                    <FaFilePdf className="inline mr-1 text-xs" /> PDF
                   </button>
                 </div>
               </div>
+              <p className="text-xs text-gray-500 mb-4">6 Bulan Terakhir</p>
               
               <div className="h-64">
                 {typeof window !== 'undefined' && (
@@ -944,49 +955,55 @@ const Finance = () => {
                   </ErrorBoundary>
                 )}
               </div>
+              </div>
+            </div>
+            
+            {/* Billing Subscription Status Widget */}
+            <div className="mb-6">
+              <BillingDashboardWidget />
             </div>
             
             {/* Partial Payments */}
             <div className="bg-white rounded-lg shadow-md p-5 mb-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Faktur Pembayaran Cicilan</h2>
+              <h2 className="text-base font-bold text-gray-800 uppercase tracking-wide mb-5">Faktur Pembayaran Cicilan</h2>
               
               <div className="overflow-x-auto">
                 <table className="min-w-full bg-white">
-                  <thead className="bg-gray-50 text-gray-600 text-sm">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th className="py-3 px-4 text-left">Faktur ID</th>
-                      <th className="py-3 px-4 text-left">Supplier</th>
-                      <th className="py-3 px-4 text-left">Total</th>
-                      <th className="py-3 px-4 text-left">Dibayar</th>
-                      <th className="py-3 px-4 text-left">Progress</th>
-                      <th className="py-3 px-4 text-left">Jatuh Tempo</th>
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Faktur ID</th>
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Supplier</th>
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Total</th>
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Dibayar</th>
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Progress</th>
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Jatuh Tempo</th>
                     </tr>
                   </thead>
-                  <tbody className="text-gray-700">
+                  <tbody>
                     {partialPayments && partialPayments.length > 0 ? (
                       partialPayments.map((payment) => (
-                        <tr key={payment.id} className="border-t hover:bg-gray-50">
-                          <td className="py-3 px-4">{payment.id}</td>
-                          <td className="py-3 px-4">{payment.supplier}</td>
-                          <td className="py-3 px-4">{formatRupiah(payment.total)}</td>
-                          <td className="py-3 px-4">{formatRupiah(payment.paid)}</td>
+                        <tr key={payment.id} className="border-t hover:bg-gray-50 transition-colors">
+                          <td className="py-3 px-4 text-sm font-medium text-gray-900">{payment.id}</td>
+                          <td className="py-3 px-4 text-sm text-gray-700">{payment.supplier}</td>
+                          <td className="py-3 px-4 text-sm font-semibold text-gray-900">{formatRupiah(payment.total)}</td>
+                          <td className="py-3 px-4 text-sm font-semibold text-green-600">{formatRupiah(payment.paid)}</td>
                           <td className="py-3 px-4">
-                            <div className="flex items-center">
-                              <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-gray-200 rounded-full h-2">
                                 <div 
-                                  className="bg-gradient-to-r from-red-500 to-orange-500 h-2 rounded-full" 
+                                  className="bg-gradient-to-r from-red-500 to-orange-500 h-2 rounded-full transition-all" 
                                   style={{ width: `${payment.percentage}%` }}
                                 ></div>
                               </div>
-                              <span className="whitespace-nowrap">{payment.percentage}%</span>
+                              <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">{payment.percentage}%</span>
                             </div>
                           </td>
-                          <td className="py-3 px-4">{payment.dueDate}</td>
+                          <td className="py-3 px-4 text-sm text-gray-700">{payment.dueDate}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="py-4 text-center text-gray-500">Tidak ada faktur pembayaran cicilan</td>
+                        <td colSpan={6} className="py-6 text-center text-sm text-gray-500">Tidak ada faktur pembayaran cicilan</td>
                       </tr>
                     )}
                   </tbody>
@@ -996,41 +1013,41 @@ const Finance = () => {
             
             {/* Unpaid Invoices */}
             <div className="bg-white rounded-lg shadow-md p-5 mb-6">
-              <h6 className="font-semibold text-lg mb-4">Faktur Belum Lunas</h6>
+              <h2 className="text-base font-bold text-gray-800 uppercase tracking-wide mb-5">Faktur Belum Lunas</h2>
               <div className="overflow-x-auto">
                 <table className="min-w-full bg-white">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Faktur</th>
-                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Supplier</th>
-                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Jatuh Tempo</th>
-                      <th className="px-4 py-2 text-right text-sm font-medium text-gray-600">Total</th>
-                      <th className="px-4 py-2 text-right text-sm font-medium text-gray-600">Dibayar</th>
-                      <th className="px-4 py-2 text-center text-sm font-medium text-gray-600">Status</th>
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Faktur</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Supplier</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Jatuh Tempo</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Total</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Dibayar</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {unpaidInvoices && unpaidInvoices.length > 0 ? (
                       unpaidInvoices.map((invoice) => (
-                        <tr key={invoice.id} className="border-b hover:bg-gray-50">
-                          <td className="px-4 py-2 whitespace-nowrap text-sm font-medium">{invoice.id}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm">{invoice.supplier}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm">{invoice.dueDate}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm text-right">{formatRupiah(invoice.total)}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm text-right">{formatRupiah(invoice.paid)}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-center">
-                            <div className="flex flex-col items-center">
-                              <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
-                                <div className="bg-gradient-to-r from-red-500 to-orange-500 h-2 rounded-full" style={{ width: `${invoice.percentage}%` }}></div>
+                        <tr key={invoice.id} className="border-t hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{invoice.id}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{invoice.supplier}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{invoice.dueDate}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-gray-900">{formatRupiah(invoice.total)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-green-600">{formatRupiah(invoice.paid)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div className="bg-gradient-to-r from-red-500 to-orange-500 h-2 rounded-full transition-all" style={{ width: `${invoice.percentage}%` }}></div>
                               </div>
-                              <span className="text-xs">{invoice.percentage}%</span>
+                              <span className="text-xs font-semibold text-gray-700">{invoice.percentage}%</span>
                             </div>
                           </td>
                         </tr>
                       ))
                     ) : (
-                      <tr className="border-b hover:bg-gray-50">
-                        <td colSpan={6} className="px-4 py-4 text-center text-gray-500">
+                      <tr>
+                        <td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-500">
                           Tidak ada faktur yang belum lunas
                         </td>
                       </tr>
@@ -1042,47 +1059,47 @@ const Finance = () => {
             
             {/* Recent Transactions */}
             <div className="bg-white rounded-lg shadow-md p-5">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">Transaksi Terbaru</h2>
-                <Link href="/finance/transactions" className="text-red-500 hover:text-red-700 font-medium flex items-center">
-                  <span>Lihat Semua Transaksi</span>
-                  <FaArrowRight className="ml-1" />
+              <div className="flex justify-between items-center mb-5">
+                <h2 className="text-base font-bold text-gray-800 uppercase tracking-wide">Transaksi Terbaru</h2>
+                <Link href="/finance/transactions" className="text-red-500 hover:text-red-700 font-semibold flex items-center text-xs">
+                  <span>Lihat Semua</span>
+                  <FaArrowRight className="ml-1.5 text-xs" />
                 </Link>
               </div>
               
               <div className="overflow-x-auto">
                 <table className="min-w-full bg-white">
-                  <thead className="bg-gray-50 text-gray-600 text-sm">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th className="py-3 px-4 text-left">Tanggal</th>
-                      <th className="py-3 px-4 text-left">Deskripsi</th>
-                      <th className="py-3 px-4 text-left">Kategori</th>
-                      <th className="py-3 px-4 text-left">Tipe</th>
-                      <th className="py-3 px-4 text-right">Jumlah</th>
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Tanggal</th>
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Deskripsi</th>
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Kategori</th>
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Tipe</th>
+                      <th className="py-3 px-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Jumlah</th>
                     </tr>
                   </thead>
-                  <tbody className="text-gray-700">
+                  <tbody>
                     {recentTransactions && recentTransactions.length > 0 ? (
                       recentTransactions.map((transaction) => (
-                        <tr key={transaction.id} className="border-t hover:bg-gray-50">
-                          <td className="py-3 px-4">{transaction.date}</td>
-                          <td className="py-3 px-4">{transaction.description}</td>
-                          <td className="py-3 px-4">{transaction.category}</td>
+                        <tr key={transaction.id} className="border-t hover:bg-gray-50 transition-colors">
+                          <td className="py-3 px-4 text-sm text-gray-700">{transaction.date}</td>
+                          <td className="py-3 px-4 text-sm font-medium text-gray-900">{transaction.description}</td>
+                          <td className="py-3 px-4 text-sm text-gray-700">{transaction.category}</td>
                           <td className="py-3 px-4">
-                            <span className={`inline-block px-2 py-1 text-xs rounded-full ${transaction.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            <span className={`inline-block px-2.5 py-1 text-xs font-semibold rounded-full ${transaction.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                               {transaction.type === 'income' ? 'Pendapatan' : 'Pengeluaran'}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-right font-medium">
-                            <span className={transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}>
+                          <td className="py-3 px-4 text-right">
+                            <span className={`text-sm font-bold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                               {transaction.type === 'income' ? '+' : '-'} {formatRupiah(transaction.amount)}
                             </span>
                           </td>
                         </tr>
                       ))
                     ) : (
-                      <tr className="border-t">
-                        <td colSpan={5} className="py-4 text-center text-gray-500">Tidak ada transaksi terbaru</td>
+                      <tr>
+                        <td colSpan={5} className="py-6 text-center text-sm text-gray-500">Tidak ada transaksi terbaru</td>
                       </tr>
                     )}
                   </tbody>

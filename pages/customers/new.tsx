@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import CustomersLayout from '@/components/customers/CustomersLayout';
-import { FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, FaSave, FaTimes } from 'react-icons/fa';
+import { FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, FaSave, FaTimes, FaBuilding, FaIdCard, FaBriefcase } from 'react-icons/fa';
 
 const CustomerNewPage: React.FC = () => {
   const router = useRouter();
@@ -9,12 +9,23 @@ const CustomerNewPage: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   
+  const [customerType, setCustomerType] = useState<'individual' | 'corporate'>('individual');
+  
   const [formData, setFormData] = useState({
     name: '',
     phoneNumber: '',
     email: '',
     address: '',
-    notes: ''
+    notes: '',
+    // Corporate fields
+    companyName: '',
+    picName: '',
+    picPosition: '',
+    contact1: '',
+    contact2: '',
+    companyEmail: '',
+    companyAddress: '',
+    taxId: ''
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -35,17 +46,32 @@ const CustomerNewPage: React.FC = () => {
       return;
     }
     
+    // Validate corporate fields
+    if (customerType === 'corporate') {
+      if (!formData.companyName) {
+        setFormError('Nama perusahaan harus diisi untuk pelanggan corporate');
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.picName) {
+        setFormError('Nama PIC harus diisi untuk pelanggan corporate');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+    
     try {
       // Submit form data
-      const response = await fetch('/api/customers', {
+      const response = await fetch('/api/customers/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           ...formData,
-          membershipLevel: 'BRONZE',
-          loyaltyPoints: 0,
+          customerType,
+          membershipLevel: 'Bronze',
+          type: 'member',
           registrationDate: new Date().toISOString(),
           isActive: true,
           totalSpent: 0
@@ -60,12 +86,21 @@ const CustomerNewPage: React.FC = () => {
       setFormSuccess('Pelanggan baru berhasil ditambahkan');
       
       // Reset form
+      setCustomerType('individual');
       setFormData({
         name: '',
         phoneNumber: '',
         email: '',
         address: '',
-        notes: ''
+        notes: '',
+        companyName: '',
+        picName: '',
+        picPosition: '',
+        contact1: '',
+        contact2: '',
+        companyEmail: '',
+        companyAddress: '',
+        taxId: ''
       });
       
       // Redirect after successful creation
@@ -99,6 +134,221 @@ const CustomerNewPage: React.FC = () => {
         )}
         
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Customer Type Selection */}
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Tipe Pelanggan <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-4">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="customerType"
+                  value="individual"
+                  checked={customerType === 'individual'}
+                  onChange={(e) => setCustomerType(e.target.value as 'individual' | 'corporate')}
+                  className="mr-2 text-red-600 focus:ring-red-500"
+                />
+                <FaUser className="mr-2 text-gray-600" />
+                <span className="text-gray-700">Individual</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="customerType"
+                  value="corporate"
+                  checked={customerType === 'corporate'}
+                  onChange={(e) => setCustomerType(e.target.value as 'individual' | 'corporate')}
+                  className="mr-2 text-red-600 focus:ring-red-500"
+                />
+                <FaBuilding className="mr-2 text-gray-600" />
+                <span className="text-gray-700">Corporate</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Corporate Fields */}
+          {customerType === 'corporate' && (
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                <FaBuilding className="mr-2 text-blue-600" />
+                Informasi Perusahaan
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Company Name */}
+                <div>
+                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Nama Perusahaan <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FaBuilding className="text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      id="companyName"
+                      name="companyName"
+                      value={formData.companyName}
+                      onChange={handleChange}
+                      required={customerType === 'corporate'}
+                      className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="PT. Nama Perusahaan"
+                    />
+                  </div>
+                </div>
+
+                {/* Tax ID / NPWP */}
+                <div>
+                  <label htmlFor="taxId" className="block text-sm font-medium text-gray-700 mb-1">
+                    NPWP / Tax ID
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FaIdCard className="text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      id="taxId"
+                      name="taxId"
+                      value={formData.taxId}
+                      onChange={handleChange}
+                      className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="00.000.000.0-000.000"
+                    />
+                  </div>
+                </div>
+
+                {/* PIC Name */}
+                <div>
+                  <label htmlFor="picName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Nama PIC <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FaUser className="text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      id="picName"
+                      name="picName"
+                      value={formData.picName}
+                      onChange={handleChange}
+                      required={customerType === 'corporate'}
+                      className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="Nama Person In Charge"
+                    />
+                  </div>
+                </div>
+
+                {/* PIC Position */}
+                <div>
+                  <label htmlFor="picPosition" className="block text-sm font-medium text-gray-700 mb-1">
+                    Jabatan PIC
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FaBriefcase className="text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      id="picPosition"
+                      name="picPosition"
+                      value={formData.picPosition}
+                      onChange={handleChange}
+                      className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="Contoh: Purchasing Manager"
+                    />
+                  </div>
+                </div>
+
+                {/* Contact 1 */}
+                <div>
+                  <label htmlFor="contact1" className="block text-sm font-medium text-gray-700 mb-1">
+                    Kontak 1
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FaPhone className="text-gray-400" />
+                    </div>
+                    <input
+                      type="tel"
+                      id="contact1"
+                      name="contact1"
+                      value={formData.contact1}
+                      onChange={handleChange}
+                      className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="021-12345678"
+                    />
+                  </div>
+                </div>
+
+                {/* Contact 2 */}
+                <div>
+                  <label htmlFor="contact2" className="block text-sm font-medium text-gray-700 mb-1">
+                    Kontak 2
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FaPhone className="text-gray-400" />
+                    </div>
+                    <input
+                      type="tel"
+                      id="contact2"
+                      name="contact2"
+                      value={formData.contact2}
+                      onChange={handleChange}
+                      className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="081234567890"
+                    />
+                  </div>
+                </div>
+
+                {/* Company Email */}
+                <div>
+                  <label htmlFor="companyEmail" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Perusahaan
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FaEnvelope className="text-gray-400" />
+                    </div>
+                    <input
+                      type="email"
+                      id="companyEmail"
+                      name="companyEmail"
+                      value={formData.companyEmail}
+                      onChange={handleChange}
+                      className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="info@company.com"
+                    />
+                  </div>
+                </div>
+
+                {/* Company Address */}
+                <div className="md:col-span-2">
+                  <label htmlFor="companyAddress" className="block text-sm font-medium text-gray-700 mb-1">
+                    Alamat Perusahaan
+                  </label>
+                  <div className="relative">
+                    <div className="absolute top-3 left-3 pointer-events-none">
+                      <FaMapMarkerAlt className="text-gray-400" />
+                    </div>
+                    <textarea
+                      id="companyAddress"
+                      name="companyAddress"
+                      value={formData.companyAddress}
+                      onChange={handleChange}
+                      rows={2}
+                      className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="Alamat lengkap perusahaan"
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Name */}
             <div>
