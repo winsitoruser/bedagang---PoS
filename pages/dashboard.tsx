@@ -20,6 +20,8 @@ const Dashboard: NextPage = () => {
   const { data: session, status } = useSession();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [salesPeriod, setSalesPeriod] = useState<'today' | 'week' | 'month'>('today');
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -31,6 +33,35 @@ const Dashboard: NextPage = () => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (session) {
+      fetchDashboardData();
+    }
+  }, [session, salesPeriod]);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/dashboard/stats?period=${salesPeriod}`);
+      const data = await response.json();
+      if (data.success) {
+        setDashboardData(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
 
   if (status === "loading") {
     return (
@@ -48,10 +79,10 @@ const Dashboard: NextPage = () => {
   const stats = [
     {
       title: "Total Penjualan Hari Ini",
-      value: "Rp 45.2 Juta",
-      change: "+12.5%",
+      value: loading ? "..." : formatCurrency(dashboardData?.mainStats?.sales || 0),
+      change: loading ? "..." : `${dashboardData?.changes?.sales >= 0 ? '+' : ''}${dashboardData?.changes?.sales?.toFixed(1) || 0}%`,
       changeText: "vs kemarin",
-      isPositive: true,
+      isPositive: (dashboardData?.changes?.sales || 0) >= 0,
       icon: FaMoneyBillWave,
       gradient: "from-green-500 to-emerald-600",
       bgLight: "bg-green-50",
@@ -59,10 +90,10 @@ const Dashboard: NextPage = () => {
     },
     {
       title: "Transaksi Hari Ini",
-      value: "156",
-      change: "+8.2%",
+      value: loading ? "..." : String(dashboardData?.mainStats?.transactions || 0),
+      change: loading ? "..." : `${dashboardData?.changes?.transactions >= 0 ? '+' : ''}${dashboardData?.changes?.transactions?.toFixed(1) || 0}%`,
       changeText: "vs kemarin",
-      isPositive: true,
+      isPositive: (dashboardData?.changes?.transactions || 0) >= 0,
       icon: FaShoppingCart,
       gradient: "from-blue-500 to-blue-600",
       bgLight: "bg-blue-50",
@@ -70,10 +101,10 @@ const Dashboard: NextPage = () => {
     },
     {
       title: "Produk Terjual",
-      value: "342",
-      change: "+15.3%",
+      value: loading ? "..." : String(dashboardData?.mainStats?.items || 0),
+      change: loading ? "..." : `${dashboardData?.changes?.items >= 0 ? '+' : ''}${dashboardData?.changes?.items?.toFixed(1) || 0}%`,
       changeText: "vs kemarin",
-      isPositive: true,
+      isPositive: (dashboardData?.changes?.items || 0) >= 0,
       icon: FaBoxOpen,
       gradient: "from-purple-500 to-purple-600",
       bgLight: "bg-purple-50",
@@ -81,8 +112,8 @@ const Dashboard: NextPage = () => {
     },
     {
       title: "Pelanggan Aktif",
-      value: "1,234",
-      change: "+5.8%",
+      value: loading ? "..." : String(dashboardData?.mainStats?.customers || 0),
+      change: "+0%",
       changeText: "bulan ini",
       isPositive: true,
       icon: FaUsers,
@@ -93,49 +124,59 @@ const Dashboard: NextPage = () => {
   ];
 
   const quickStats = [
-    { label: "Rata-rata Transaksi", value: "Rp 289.743", icon: FaReceipt },
-    { label: "Stok Menipis", value: "12 Produk", icon: FaWarehouse, alert: true },
-    { label: "Pending Orders", value: "8", icon: FaClock },
+    { 
+      label: "Rata-rata Transaksi", 
+      value: loading ? "..." : formatCurrency(dashboardData?.quickStats?.avgTransaction || 0), 
+      icon: FaReceipt 
+    },
+    { 
+      label: "Stok Menipis", 
+      value: loading ? "..." : `${dashboardData?.quickStats?.lowStock || 0} Produk`, 
+      icon: FaWarehouse, 
+      alert: (dashboardData?.quickStats?.lowStock || 0) > 0 
+    },
+    { 
+      label: "Pending Orders", 
+      value: loading ? "..." : String(dashboardData?.quickStats?.pendingOrders || 0), 
+      icon: FaClock 
+    },
   ];
 
-  const topProducts = [
-    { name: "Kopi Arabica 250g", sold: 45, revenue: "Rp 2.250.000", trend: "+12%" },
-    { name: "Teh Hijau Premium", sold: 38, revenue: "Rp 1.520.000", trend: "+8%" },
-    { name: "Susu UHT 1L", sold: 32, revenue: "Rp 960.000", trend: "+15%" },
-    { name: "Roti Tawar Gandum", sold: 28, revenue: "Rp 840.000", trend: "+5%" },
-  ];
+  const topProducts = loading ? [] : (dashboardData?.topProducts || []).map((p: any) => ({
+    name: p.name,
+    sold: p.sold,
+    revenue: formatCurrency(p.revenue),
+    trend: p.trend
+  }));
 
-  const recentTransactions = [
-    { id: "#TRX-001234", time: "10:30", customer: "Ahmad Rizki", amount: "Rp 250.000", status: "success" },
-    { id: "#TRX-001233", time: "10:15", customer: "Siti Nurhaliza", amount: "Rp 180.000", status: "success" },
-    { id: "#TRX-001232", time: "09:45", customer: "Budi Santoso", amount: "Rp 320.000", status: "success" },
-    { id: "#TRX-001231", time: "09:30", customer: "Dewi Lestari", amount: "Rp 150.000", status: "success" },
-  ];
+  const recentTransactions = loading ? [] : (dashboardData?.recentTransactions || []).map((t: any) => ({
+    id: t.id,
+    time: t.time,
+    customer: t.customer,
+    amount: formatCurrency(t.amount),
+    status: t.status
+  }));
 
-  const alerts = [
-    { type: "warning", message: "12 produk stok menipis", action: "Lihat Detail", link: "/inventory" },
-    { type: "info", message: "8 pesanan menunggu konfirmasi", action: "Proses", link: "/pos/transactions" },
-  ];
+  const alerts = loading ? [] : (dashboardData?.alerts || []);
 
-  const salesData = [
-    { cashier: 'Ahmad Rizki', sales: 7800000, transactions: 45, color: 'from-blue-500 to-blue-600' },
-    { cashier: 'Siti Nurhaliza', sales: 6200000, transactions: 38, color: 'from-green-500 to-green-600' },
-    { cashier: 'Budi Santoso', sales: 5100000, transactions: 32, color: 'from-purple-500 to-purple-600' },
-    { cashier: 'Dewi Lestari', sales: 4500000, transactions: 28, color: 'from-orange-500 to-orange-600' },
-    { cashier: 'Eko Prasetyo', sales: 4200000, transactions: 25, color: 'from-pink-500 to-pink-600' },
-    { cashier: 'Fitri Handayani', sales: 3800000, transactions: 22, color: 'from-yellow-500 to-yellow-600' },
-  ];
+  const colors = ['from-blue-500 to-blue-600', 'from-green-500 to-green-600', 'from-purple-500 to-purple-600', 'from-orange-500 to-orange-600', 'from-pink-500 to-pink-600', 'from-yellow-500 to-yellow-600'];
+  const salesData = loading ? [] : (dashboardData?.salesByCashier || []).map((s: any, idx: number) => ({
+    cashier: s.cashier,
+    sales: s.sales,
+    transactions: s.transactions,
+    color: colors[idx % colors.length]
+  }));
 
   const maxSales = Math.max(...salesData.map(d => d.sales));
   const totalSalesCashier = salesData.reduce((sum, d) => sum + d.sales, 0);
   const totalTransactionsCashier = salesData.reduce((sum, d) => sum + d.transactions, 0);
 
-  const categoryData = [
-    { name: 'Makanan', value: 35, color: 'bg-blue-500' },
-    { name: 'Minuman', value: 25, color: 'bg-green-500' },
-    { name: 'Snack', value: 20, color: 'bg-purple-500' },
-    { name: 'Lainnya', value: 20, color: 'bg-orange-500' },
-  ];
+  const categoryColors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500'];
+  const categoryData = loading ? [] : (dashboardData?.categoryData || []).map((c: any, idx: number) => ({
+    name: c.name,
+    value: c.value,
+    color: categoryColors[idx % categoryColors.length]
+  }));
 
   return (
     <DashboardLayout>
