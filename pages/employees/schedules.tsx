@@ -11,6 +11,8 @@ import {
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import AddScheduleModal from '@/components/employees/AddScheduleModal';
+import EditScheduleModal from '@/components/employees/EditScheduleModal';
 
 interface Schedule {
   id: string;
@@ -41,8 +43,10 @@ const EmployeeSchedules: NextPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -54,6 +58,7 @@ const EmployeeSchedules: NextPage = () => {
     if (session) {
       fetchSchedules();
       fetchEmployees();
+      fetchLocations();
     }
   }, [session, currentDate, viewMode]);
 
@@ -119,6 +124,44 @@ const EmployeeSchedules: NextPage = () => {
       console.error('Error fetching employees:', error);
       setEmployees([]);
     }
+  };
+
+  const fetchLocations = async () => {
+    try {
+      const response = await fetch('/api/locations');
+      
+      if (!response.ok) {
+        console.error('Failed to fetch locations:', response.status);
+        setLocations([]);
+        return;
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Response is not JSON');
+        setLocations([]);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setLocations(data.data);
+      } else {
+        setLocations([]);
+      }
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      setLocations([]);
+    }
+  };
+
+  const handleScheduleClick = (schedule: Schedule) => {
+    setSelectedSchedule(schedule);
+    setShowEditModal(true);
+  };
+
+  const handleModalSuccess = () => {
+    fetchSchedules();
   };
 
   const getDateRange = () => {
@@ -405,7 +448,7 @@ const EmployeeSchedules: NextPage = () => {
                           <div
                             key={schedule.id}
                             className="bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition-shadow cursor-pointer"
-                            onClick={() => setSelectedSchedule(schedule)}
+                            onClick={() => handleScheduleClick(schedule)}
                           >
                             <div className="flex items-center space-x-2 mb-1">
                               <div className={`w-2 h-2 rounded-full ${getShiftColor(schedule.shiftType)}`}></div>
@@ -481,7 +524,7 @@ const EmployeeSchedules: NextPage = () => {
                             <div
                               key={schedule.id}
                               className="bg-white border border-gray-200 rounded px-2 py-1 hover:shadow-md transition-shadow cursor-pointer"
-                              onClick={() => setSelectedSchedule(schedule)}
+                              onClick={() => handleScheduleClick(schedule)}
                             >
                               <div className="flex items-center space-x-1">
                                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getShiftColor(schedule.shiftType)}`}></div>
@@ -535,6 +578,27 @@ const EmployeeSchedules: NextPage = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Modals */}
+        <AddScheduleModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={handleModalSuccess}
+          employees={employees}
+          locations={locations}
+        />
+
+        <EditScheduleModal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedSchedule(null);
+          }}
+          onSuccess={handleModalSuccess}
+          schedule={selectedSchedule}
+          employees={employees}
+          locations={locations}
+        />
       </div>
     </DashboardLayout>
   );
