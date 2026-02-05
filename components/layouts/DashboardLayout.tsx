@@ -17,7 +17,8 @@ import {
   Ticket,
   Award,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  CalendarDays
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -56,6 +57,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { icon: Package, label: 'Inventori', href: '/inventory' },
     { icon: Wallet, label: 'Keuangan', href: '/finance' },
     { icon: Users, label: 'Pelanggan', href: '/customers' },
+    { icon: CalendarDays, label: 'Jadwal & Shift', href: '/employees/schedules' },
     { icon: Ticket, label: 'Promo & Voucher', href: '/promo-voucher' },
     { icon: Award, label: 'Program Loyalitas', href: '/loyalty-program' },
     { icon: BarChart3, label: 'Laporan', href: '/reports' },
