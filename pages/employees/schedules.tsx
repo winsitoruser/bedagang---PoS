@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import AddScheduleModal from '@/components/employees/AddScheduleModal';
 import EditScheduleModal from '@/components/employees/EditScheduleModal';
+import DayDetailModal from '@/components/employees/DayDetailModal';
 import { isHoliday, isWeekend, getHolidayColor } from '@/lib/indonesiaHolidays';
 
 interface Schedule {
@@ -45,7 +46,10 @@ const EmployeeSchedules: NextPage = () => {
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDayDetailModal, setShowDayDetailModal] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDateSchedules, setSelectedDateSchedules] = useState<Schedule[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
 
@@ -163,6 +167,13 @@ const EmployeeSchedules: NextPage = () => {
 
   const handleModalSuccess = () => {
     fetchSchedules();
+  };
+
+  const handleDateClick = (day: Date) => {
+    const daySchedules = getSchedulesForDate(day);
+    setSelectedDate(day);
+    setSelectedDateSchedules(daySchedules);
+    setShowDayDetailModal(true);
   };
 
   const getDateRange = () => {
@@ -432,7 +443,8 @@ const EmployeeSchedules: NextPage = () => {
                   return (
                     <div
                       key={idx}
-                      className={`border rounded-lg p-3 min-h-[200px] ${
+                      onClick={() => handleDateClick(day)}
+                      className={`border rounded-lg p-3 min-h-[200px] cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] ${
                         isToday
                           ? 'border-blue-500 bg-blue-50'
                           : holiday
@@ -452,18 +464,26 @@ const EmployeeSchedules: NextPage = () => {
                           {day.getDate()}
                         </p>
                         {holiday && (
-                          <p className="text-xs font-medium text-red-600 mt-1">
+                          <p className="text-xs font-medium text-red-600 mt-1 truncate">
                             {holiday.name}
+                          </p>
+                        )}
+                        {daySchedules.length > 0 && (
+                          <p className="text-xs text-blue-600 font-semibold mt-1">
+                            {daySchedules.length} jadwal
                           </p>
                         )}
                       </div>
 
                       <div className="space-y-2">
-                        {daySchedules.map((schedule) => (
+                        {daySchedules.slice(0, 2).map((schedule) => (
                           <div
                             key={schedule.id}
                             className="bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition-shadow cursor-pointer"
-                            onClick={() => handleScheduleClick(schedule)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleScheduleClick(schedule);
+                            }}
                           >
                             <div className="flex items-center space-x-2 mb-1">
                               <div className={`w-2 h-2 rounded-full ${getShiftColor(schedule.shiftType)}`}></div>
@@ -479,6 +499,11 @@ const EmployeeSchedules: NextPage = () => {
                             </Badge>
                           </div>
                         ))}
+                        {daySchedules.length > 2 && (
+                          <div className="text-xs text-center text-blue-600 font-medium py-1 bg-blue-50 rounded">
+                            +{daySchedules.length - 2} lagi
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -515,7 +540,8 @@ const EmployeeSchedules: NextPage = () => {
                     return (
                       <div
                         key={idx}
-                        className={`border rounded-lg p-2 min-h-[120px] transition-all ${
+                        onClick={() => handleDateClick(day)}
+                        className={`border rounded-lg p-2 min-h-[120px] transition-all cursor-pointer hover:shadow-lg hover:scale-[1.02] ${
                           isToday
                             ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
                             : holiday
@@ -523,7 +549,7 @@ const EmployeeSchedules: NextPage = () => {
                             : isWeekendDay
                             ? 'border-gray-300 bg-gray-50'
                             : isCurrentMonth
-                            ? 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                            ? 'border-gray-200 hover:border-gray-300'
                             : 'border-gray-100 bg-gray-50'
                         }`}
                       >
@@ -553,11 +579,14 @@ const EmployeeSchedules: NextPage = () => {
                         </div>
 
                         <div className="space-y-1">
-                          {daySchedules.slice(0, 3).map((schedule) => (
+                          {daySchedules.slice(0, 2).map((schedule) => (
                             <div
                               key={schedule.id}
                               className="bg-white border border-gray-200 rounded px-2 py-1 hover:shadow-md transition-shadow cursor-pointer"
-                              onClick={() => handleScheduleClick(schedule)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleScheduleClick(schedule);
+                              }}
                             >
                               <div className="flex items-center space-x-1">
                                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getShiftColor(schedule.shiftType)}`}></div>
@@ -570,9 +599,9 @@ const EmployeeSchedules: NextPage = () => {
                               </p>
                             </div>
                           ))}
-                          {daySchedules.length > 3 && (
-                            <div className="text-xs text-blue-600 font-medium text-center py-1">
-                              +{daySchedules.length - 3} lagi
+                          {daySchedules.length > 2 && (
+                            <div className="text-xs text-blue-600 font-medium text-center py-1 bg-blue-50 rounded">
+                              +{daySchedules.length - 2} lagi
                             </div>
                           )}
                         </div>
@@ -657,6 +686,17 @@ const EmployeeSchedules: NextPage = () => {
           schedule={selectedSchedule}
           employees={employees}
           locations={locations}
+        />
+
+        <DayDetailModal
+          isOpen={showDayDetailModal}
+          onClose={() => {
+            setShowDayDetailModal(false);
+            setSelectedDate(null);
+            setSelectedDateSchedules([]);
+          }}
+          date={selectedDate || new Date()}
+          schedules={selectedDateSchedules}
         />
       </div>
     </DashboardLayout>
