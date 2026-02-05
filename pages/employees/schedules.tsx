@@ -1,0 +1,459 @@
+import React, { useEffect, useState } from 'react';
+import type { NextPage } from 'next';
+import Head from 'next/head';
+import { useRouter } from 'next/router';
+import { useSession } from 'next-auth/react';
+import {
+  FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaFilter, FaClock,
+  FaUser, FaMapMarkerAlt, FaSpinner, FaChevronLeft, FaChevronRight,
+  FaCalendarWeek, FaCalendarDay, FaCheck, FaTimes, FaExclamationCircle
+} from 'react-icons/fa';
+import DashboardLayout from '@/components/layouts/DashboardLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+
+interface Schedule {
+  id: string;
+  employeeId: string;
+  scheduleDate: string;
+  shiftType: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  notes?: string;
+  employee: {
+    id: string;
+    name: string;
+    employeeNumber: string;
+    position: string;
+  };
+  location?: {
+    id: string;
+    name: string;
+  };
+}
+
+const EmployeeSchedules: NextPage = () => {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+  const [employees, setEmployees] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/login');
+    }
+  }, [status, router]);
+
+  useEffect(() => {
+    if (session) {
+      fetchSchedules();
+      fetchEmployees();
+    }
+  }, [session, currentDate, viewMode]);
+
+  const fetchSchedules = async () => {
+    setLoading(true);
+    try {
+      const { startDate, endDate } = getDateRange();
+      const response = await fetch(
+        `/api/employees/schedules?startDate=${startDate}&endDate=${endDate}`
+      );
+      const data = await response.json();
+      if (data.success) {
+        setSchedules(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching schedules:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/employees?limit=1000');
+      const data = await response.json();
+      if (data.success) {
+        setEmployees(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
+
+  const getDateRange = () => {
+    const start = new Date(currentDate);
+    const end = new Date(currentDate);
+
+    if (viewMode === 'week') {
+      const day = start.getDay();
+      start.setDate(start.getDate() - day);
+      end.setDate(start.getDate() + 6);
+    } else {
+      start.setDate(1);
+      end.setMonth(end.getMonth() + 1);
+      end.setDate(0);
+    }
+
+    return {
+      startDate: start.toISOString().split('T')[0],
+      endDate: end.toISOString().split('T')[0]
+    };
+  };
+
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    if (viewMode === 'week') {
+      newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
+    } else {
+      newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
+    }
+    setCurrentDate(newDate);
+  };
+
+  const getWeekDays = () => {
+    const days = [];
+    const start = new Date(currentDate);
+    const day = start.getDay();
+    start.setDate(start.getDate() - day);
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(start);
+      date.setDate(date.getDate() + i);
+      days.push(date);
+    }
+    return days;
+  };
+
+  const getSchedulesForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return schedules.filter(s => s.scheduleDate === dateStr);
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: any = {
+      scheduled: 'bg-blue-100 text-blue-700',
+      confirmed: 'bg-green-100 text-green-700',
+      completed: 'bg-gray-100 text-gray-700',
+      cancelled: 'bg-red-100 text-red-700',
+      absent: 'bg-orange-100 text-orange-700'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-700';
+  };
+
+  const getShiftColor = (shiftType: string) => {
+    const colors: any = {
+      pagi: 'bg-yellow-500',
+      siang: 'bg-blue-500',
+      malam: 'bg-purple-500',
+      full: 'bg-green-500'
+    };
+    return colors[shiftType] || 'bg-gray-500';
+  };
+
+  if (status === 'loading' || loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <FaSpinner className="animate-spin h-12 w-12 mx-auto text-blue-600" />
+            <p className="mt-4 text-gray-700">Memuat jadwal...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <Head>
+        <title>Jadwal & Shift Karyawan | BEDAGANG</title>
+      </Head>
+
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Jadwal & Shift Karyawan</h1>
+            <p className="text-gray-600 mt-1">Kelola jadwal dan shift karyawan</p>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <FaPlus />
+            <span>Tambah Jadwal</span>
+          </button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total Jadwal</p>
+                  <p className="text-2xl font-bold text-gray-900">{schedules.length}</p>
+                </div>
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <FaCalendarAlt className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Terjadwal</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {schedules.filter(s => s.status === 'scheduled').length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <FaClock className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Terkonfirmasi</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {schedules.filter(s => s.status === 'confirmed').length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <FaCheck className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Karyawan Aktif</p>
+                  <p className="text-2xl font-bold text-purple-600">{employees.length}</p>
+                </div>
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <FaUser className="w-6 h-6 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Calendar Controls */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => navigateDate('prev')}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <FaChevronLeft className="w-5 h-5 text-gray-600" />
+                </button>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {currentDate.toLocaleDateString('id-ID', { 
+                    month: 'long', 
+                    year: 'numeric' 
+                  })}
+                </h2>
+                <button
+                  onClick={() => navigateDate('next')}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <FaChevronRight className="w-5 h-5 text-gray-600" />
+                </button>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentDate(new Date())}
+                  className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Hari Ini
+                </button>
+                <div className="flex bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('week')}
+                    className={`px-4 py-2 text-sm rounded-md transition-colors ${
+                      viewMode === 'week'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <FaCalendarWeek className="inline mr-2" />
+                    Minggu
+                  </button>
+                  <button
+                    onClick={() => setViewMode('month')}
+                    className={`px-4 py-2 text-sm rounded-md transition-colors ${
+                      viewMode === 'month'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <FaCalendarDay className="inline mr-2" />
+                    Bulan
+                  </button>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            {/* Week View */}
+            {viewMode === 'week' && (
+              <div className="grid grid-cols-7 gap-2">
+                {getWeekDays().map((day, idx) => {
+                  const daySchedules = getSchedulesForDate(day);
+                  const isToday = day.toDateString() === new Date().toDateString();
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`border rounded-lg p-3 min-h-[200px] ${
+                        isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="text-center mb-3">
+                        <p className="text-xs text-gray-500">
+                          {day.toLocaleDateString('id-ID', { weekday: 'short' })}
+                        </p>
+                        <p className={`text-lg font-bold ${
+                          isToday ? 'text-blue-600' : 'text-gray-900'
+                        }`}>
+                          {day.getDate()}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        {daySchedules.map((schedule) => (
+                          <div
+                            key={schedule.id}
+                            className="bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() => setSelectedSchedule(schedule)}
+                          >
+                            <div className="flex items-center space-x-2 mb-1">
+                              <div className={`w-2 h-2 rounded-full ${getShiftColor(schedule.shiftType)}`}></div>
+                              <p className="text-xs font-semibold text-gray-900 truncate">
+                                {schedule.employee.name}
+                              </p>
+                            </div>
+                            <p className="text-xs text-gray-600">
+                              {schedule.startTime.substring(0, 5)} - {schedule.endTime.substring(0, 5)}
+                            </p>
+                            <Badge className={`text-xs mt-1 ${getStatusColor(schedule.status)}`}>
+                              {schedule.status}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Month View - List */}
+            {viewMode === 'month' && (
+              <div className="space-y-2">
+                {schedules.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FaCalendarAlt className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                    <p className="text-gray-500">Tidak ada jadwal untuk bulan ini</p>
+                  </div>
+                ) : (
+                  schedules.map((schedule) => (
+                    <div
+                      key={schedule.id}
+                      className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className={`w-1 h-16 rounded-full ${getShiftColor(schedule.shiftType)}`}></div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{schedule.employee.name}</p>
+                          <p className="text-sm text-gray-600">{schedule.employee.position}</p>
+                          <div className="flex items-center space-x-4 mt-1">
+                            <span className="text-xs text-gray-500 flex items-center">
+                              <FaCalendarAlt className="mr-1" />
+                              {new Date(schedule.scheduleDate).toLocaleDateString('id-ID')}
+                            </span>
+                            <span className="text-xs text-gray-500 flex items-center">
+                              <FaClock className="mr-1" />
+                              {schedule.startTime.substring(0, 5)} - {schedule.endTime.substring(0, 5)}
+                            </span>
+                            {schedule.location && (
+                              <span className="text-xs text-gray-500 flex items-center">
+                                <FaMapMarkerAlt className="mr-1" />
+                                {schedule.location.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Badge className={getStatusColor(schedule.status)}>
+                          {schedule.status}
+                        </Badge>
+                        <button
+                          onClick={() => setSelectedSchedule(schedule)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <FaEdit />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Legend */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-6">
+                <p className="text-sm font-semibold text-gray-700">Shift:</p>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                  <span className="text-sm text-gray-600">Pagi</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                  <span className="text-sm text-gray-600">Siang</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                  <span className="text-sm text-gray-600">Malam</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <span className="text-sm text-gray-600">Full Day</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default EmployeeSchedules;
