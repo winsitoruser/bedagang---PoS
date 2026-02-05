@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import AddScheduleModal from '@/components/employees/AddScheduleModal';
 import EditScheduleModal from '@/components/employees/EditScheduleModal';
+import { isHoliday, isWeekend, getHolidayColor } from '@/lib/indonesiaHolidays';
 
 interface Schedule {
   id: string;
@@ -424,12 +425,21 @@ const EmployeeSchedules: NextPage = () => {
                 {getWeekDays().map((day, idx) => {
                   const daySchedules = getSchedulesForDate(day);
                   const isToday = day.toDateString() === new Date().toDateString();
+                  const dateStr = day.toISOString().split('T')[0];
+                  const holiday = isHoliday(dateStr);
+                  const isWeekendDay = isWeekend(day);
 
                   return (
                     <div
                       key={idx}
                       className={`border rounded-lg p-3 min-h-[200px] ${
-                        isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        isToday
+                          ? 'border-blue-500 bg-blue-50'
+                          : holiday
+                          ? getHolidayColor(holiday)
+                          : isWeekendDay
+                          ? 'border-gray-300 bg-gray-50'
+                          : 'border-gray-200'
                       }`}
                     >
                       <div className="text-center mb-3">
@@ -437,10 +447,15 @@ const EmployeeSchedules: NextPage = () => {
                           {day.toLocaleDateString('id-ID', { weekday: 'short' })}
                         </p>
                         <p className={`text-lg font-bold ${
-                          isToday ? 'text-blue-600' : 'text-gray-900'
+                          isToday ? 'text-blue-600' : holiday ? 'text-red-600' : 'text-gray-900'
                         }`}>
                           {day.getDate()}
                         </p>
+                        {holiday && (
+                          <p className="text-xs font-medium text-red-600 mt-1">
+                            {holiday.name}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -493,6 +508,9 @@ const EmployeeSchedules: NextPage = () => {
                     const daySchedules = getSchedulesForDate(day);
                     const isToday = day.toDateString() === new Date().toDateString();
                     const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                    const dateStr = day.toISOString().split('T')[0];
+                    const holiday = isHoliday(dateStr);
+                    const isWeekendDay = isWeekend(day);
 
                     return (
                       <div
@@ -500,23 +518,38 @@ const EmployeeSchedules: NextPage = () => {
                         className={`border rounded-lg p-2 min-h-[120px] transition-all ${
                           isToday
                             ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                            : holiday
+                            ? getHolidayColor(holiday) + ' border-2'
+                            : isWeekendDay
+                            ? 'border-gray-300 bg-gray-50'
                             : isCurrentMonth
                             ? 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                             : 'border-gray-100 bg-gray-50'
                         }`}
                       >
-                        <div className="text-right mb-2">
-                          <span
-                            className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-semibold ${
-                              isToday
-                                ? 'bg-blue-600 text-white'
-                                : isCurrentMonth
-                                ? 'text-gray-900'
-                                : 'text-gray-400'
-                            }`}
-                          >
-                            {day.getDate()}
-                          </span>
+                        <div className="mb-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              {holiday && (
+                                <p className="text-xs font-semibold text-red-600 truncate">
+                                  {holiday.name}
+                                </p>
+                              )}
+                            </div>
+                            <span
+                              className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-semibold ${
+                                isToday
+                                  ? 'bg-blue-600 text-white'
+                                  : holiday
+                                  ? 'bg-red-600 text-white'
+                                  : isCurrentMonth
+                                  ? 'text-gray-900'
+                                  : 'text-gray-400'
+                              }`}
+                            >
+                              {day.getDate()}
+                            </span>
+                          </div>
                         </div>
 
                         <div className="space-y-1">
@@ -555,7 +588,8 @@ const EmployeeSchedules: NextPage = () => {
         {/* Legend */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="space-y-3">
+              {/* Shift Types */}
               <div className="flex items-center space-x-6">
                 <p className="text-sm font-semibold text-gray-700">Shift:</p>
                 <div className="flex items-center space-x-2">
@@ -573,6 +607,31 @@ const EmployeeSchedules: NextPage = () => {
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 rounded-full bg-green-500"></div>
                   <span className="text-sm text-gray-600">Full Day</span>
+                </div>
+              </div>
+
+              {/* Calendar Indicators */}
+              <div className="flex items-center space-x-6 pt-3 border-t border-gray-200">
+                <p className="text-sm font-semibold text-gray-700">Kalender:</p>
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 rounded bg-red-100 border-2 border-red-300 flex items-center justify-center">
+                    <span className="text-xs font-bold text-red-600">H</span>
+                  </div>
+                  <span className="text-sm text-gray-600">Hari Libur Nasional</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 rounded bg-green-100 border-2 border-green-300 flex items-center justify-center">
+                    <span className="text-xs font-bold text-green-600">H</span>
+                  </div>
+                  <span className="text-sm text-gray-600">Hari Libur Keagamaan</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 rounded bg-gray-50 border border-gray-300"></div>
+                  <span className="text-sm text-gray-600">Akhir Pekan</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 rounded bg-blue-50 border-2 border-blue-500"></div>
+                  <span className="text-sm text-gray-600">Hari Ini</span>
                 </div>
               </div>
             </div>
