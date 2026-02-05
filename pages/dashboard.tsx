@@ -63,6 +63,16 @@ const Dashboard: NextPage = () => {
     }).format(amount);
   };
 
+  const formatSalesAmount = (amount: number) => {
+    if (!amount || isNaN(amount) || amount === 0) {
+      return 'Rp 0';
+    }
+    if (amount >= 1000000) {
+      return `Rp ${(amount / 1000000).toFixed(1)} Jt`;
+    }
+    return formatCurrency(amount);
+  };
+
   if (status === "loading") {
     return (
       <DashboardLayout>
@@ -167,9 +177,9 @@ const Dashboard: NextPage = () => {
     color: colors[idx % colors.length]
   }));
 
-  const maxSales = Math.max(...salesData.map(d => d.sales));
-  const totalSalesCashier = salesData.reduce((sum, d) => sum + d.sales, 0);
-  const totalTransactionsCashier = salesData.reduce((sum, d) => sum + d.transactions, 0);
+  const maxSales = salesData.length > 0 ? Math.max(...salesData.map((d: any) => d.sales || 0)) : 0;
+  const totalSalesCashier = salesData.reduce((sum: number, d: any) => sum + (d.sales || 0), 0);
+  const totalTransactionsCashier = salesData.reduce((sum: number, d: any) => sum + (d.transactions || 0), 0);
 
   const categoryColors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500'];
   const categoryData = loading ? [] : (dashboardData?.categoryData || []).map((c: any, idx: number) => ({
@@ -347,13 +357,13 @@ const Dashboard: NextPage = () => {
                             style={{ width: `${(data.sales / maxSales) * 100}%` }}
                           >
                             <span className="text-white text-xs font-bold">
-                              {(data.sales / 1000000).toFixed(1)}M
+                              {data.sales >= 1000000 ? `${(data.sales / 1000000).toFixed(1)}M` : formatCurrency(data.sales)}
                             </span>
                           </div>
                         </div>
                         <div className="w-32 text-right">
                           <p className="text-sm font-bold text-gray-900">
-                            Rp {(data.sales / 1000000).toFixed(1)} Jt
+                            {formatSalesAmount(data.sales)}
                           </p>
                           <p className="text-xs text-gray-500">
                             {((data.sales / totalSalesCashier) * 100).toFixed(1)}%
@@ -368,7 +378,7 @@ const Dashboard: NextPage = () => {
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Total Penjualan</p>
-                    <p className="text-xl font-bold text-gray-900">Rp {(totalSalesCashier / 1000000).toFixed(1)} Jt</p>
+                    <p className="text-xl font-bold text-gray-900">{formatSalesAmount(totalSalesCashier)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Total Transaksi</p>
@@ -376,7 +386,9 @@ const Dashboard: NextPage = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-500">Rata-rata/Kasir</p>
-                    <p className="text-xl font-bold text-green-600">Rp {(totalSalesCashier / salesData.length / 1000000).toFixed(1)} Jt</p>
+                    <p className="text-xl font-bold text-green-600">
+                      {salesData.length > 0 ? formatSalesAmount(totalSalesCashier / salesData.length) : '-'}
+                    </p>
                   </div>
                 </div>
               </div>
