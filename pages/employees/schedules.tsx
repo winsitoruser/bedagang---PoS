@@ -165,6 +165,31 @@ const EmployeeSchedules: NextPage = () => {
     return days;
   };
 
+  const getMonthDays = () => {
+    const days = [];
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    // First day of month
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    // Get day of week for first day (0 = Sunday)
+    const startingDayOfWeek = firstDay.getDay();
+    
+    // Add empty cells for days before month starts
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    // Add all days in month
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      days.push(new Date(year, month, day));
+    }
+    
+    return days;
+  };
+
   const getSchedulesForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
     return schedules.filter(s => s.scheduleDate === dateStr);
@@ -403,57 +428,82 @@ const EmployeeSchedules: NextPage = () => {
               </div>
             )}
 
-            {/* Month View - List */}
+            {/* Month View - Calendar Grid */}
             {viewMode === 'month' && (
-              <div className="space-y-2">
-                {schedules.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FaCalendarAlt className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500">Tidak ada jadwal untuk bulan ini</p>
-                  </div>
-                ) : (
-                  schedules.map((schedule) => (
-                    <div
-                      key={schedule.id}
-                      className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div className={`w-1 h-16 rounded-full ${getShiftColor(schedule.shiftType)}`}></div>
-                        <div>
-                          <p className="font-semibold text-gray-900">{schedule.employee.name}</p>
-                          <p className="text-sm text-gray-600">{schedule.employee.position}</p>
-                          <div className="flex items-center space-x-4 mt-1">
-                            <span className="text-xs text-gray-500 flex items-center">
-                              <FaCalendarAlt className="mr-1" />
-                              {new Date(schedule.scheduleDate).toLocaleDateString('id-ID')}
-                            </span>
-                            <span className="text-xs text-gray-500 flex items-center">
-                              <FaClock className="mr-1" />
-                              {schedule.startTime.substring(0, 5)} - {schedule.endTime.substring(0, 5)}
-                            </span>
-                            {schedule.location && (
-                              <span className="text-xs text-gray-500 flex items-center">
-                                <FaMapMarkerAlt className="mr-1" />
-                                {schedule.location.name}
-                              </span>
-                            )}
-                          </div>
+              <div>
+                {/* Calendar Header - Days of Week */}
+                <div className="grid grid-cols-7 gap-2 mb-2">
+                  {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((day) => (
+                    <div key={day} className="text-center py-2">
+                      <p className="text-sm font-semibold text-gray-600">{day}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Calendar Grid - Full Month */}
+                <div className="grid grid-cols-7 gap-2">
+                  {getMonthDays().map((day, idx) => {
+                    if (!day) {
+                      return <div key={`empty-${idx}`} className="min-h-[120px]"></div>;
+                    }
+
+                    const daySchedules = getSchedulesForDate(day);
+                    const isToday = day.toDateString() === new Date().toDateString();
+                    const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`border rounded-lg p-2 min-h-[120px] transition-all ${
+                          isToday
+                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                            : isCurrentMonth
+                            ? 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                            : 'border-gray-100 bg-gray-50'
+                        }`}
+                      >
+                        <div className="text-right mb-2">
+                          <span
+                            className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-semibold ${
+                              isToday
+                                ? 'bg-blue-600 text-white'
+                                : isCurrentMonth
+                                ? 'text-gray-900'
+                                : 'text-gray-400'
+                            }`}
+                          >
+                            {day.getDate()}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1">
+                          {daySchedules.slice(0, 3).map((schedule) => (
+                            <div
+                              key={schedule.id}
+                              className="bg-white border border-gray-200 rounded px-2 py-1 hover:shadow-md transition-shadow cursor-pointer"
+                              onClick={() => setSelectedSchedule(schedule)}
+                            >
+                              <div className="flex items-center space-x-1">
+                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getShiftColor(schedule.shiftType)}`}></div>
+                                <p className="text-xs font-medium text-gray-900 truncate">
+                                  {schedule.employee.name}
+                                </p>
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                {schedule.startTime.substring(0, 5)}
+                              </p>
+                            </div>
+                          ))}
+                          {daySchedules.length > 3 && (
+                            <div className="text-xs text-blue-600 font-medium text-center py-1">
+                              +{daySchedules.length - 3} lagi
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <Badge className={getStatusColor(schedule.status)}>
-                          {schedule.status}
-                        </Badge>
-                        <button
-                          onClick={() => setSelectedSchedule(schedule)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        >
-                          <FaEdit />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
+                    );
+                  })}
+                </div>
               </div>
             )}
           </CardContent>
