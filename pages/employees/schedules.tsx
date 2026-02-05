@@ -64,12 +64,29 @@ const EmployeeSchedules: NextPage = () => {
       const response = await fetch(
         `/api/employees/schedules?startDate=${startDate}&endDate=${endDate}`
       );
+      
+      if (!response.ok) {
+        console.error('Failed to fetch schedules:', response.status);
+        setSchedules([]);
+        return;
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Response is not JSON');
+        setSchedules([]);
+        return;
+      }
+
       const data = await response.json();
       if (data.success) {
         setSchedules(data.data);
+      } else {
+        setSchedules([]);
       }
     } catch (error) {
       console.error('Error fetching schedules:', error);
+      setSchedules([]);
     } finally {
       setLoading(false);
     }
@@ -78,12 +95,29 @@ const EmployeeSchedules: NextPage = () => {
   const fetchEmployees = async () => {
     try {
       const response = await fetch('/api/employees?limit=1000');
+      
+      if (!response.ok) {
+        console.error('Failed to fetch employees:', response.status);
+        setEmployees([]);
+        return;
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Response is not JSON');
+        setEmployees([]);
+        return;
+      }
+
       const data = await response.json();
       if (data.success) {
         setEmployees(data.data);
+      } else {
+        setEmployees([]);
       }
     } catch (error) {
       console.error('Error fetching employees:', error);
+      setEmployees([]);
     }
   };
 
