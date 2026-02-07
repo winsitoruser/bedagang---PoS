@@ -52,6 +52,8 @@ db.ProductVariant = require('./ProductVariant');
 db.SystemAlert = require('./SystemAlert');
 db.AlertSubscription = require('./AlertSubscription');
 db.AlertAction = require('./AlertAction');
+db.EmployeeSchedule = require('./EmployeeSchedule');
+db.ShiftTemplate = require('./ShiftTemplate');
 
 // Load associations if they exist
 // Associations are defined in the models themselves or in separate files
