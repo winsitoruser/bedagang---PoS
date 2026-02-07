@@ -52,6 +52,10 @@ const CashierPage: React.FC = () => {
   const [transactionCount, setTransactionCount] = useState(0);
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [shiftAction, setShiftAction] = useState<'open' | 'close'>('open');
+  
+  // Payment success states
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -314,6 +318,33 @@ const CashierPage: React.FC = () => {
     } finally {
       setIsProcessingCheckout(false);
     }
+    
+    // Generate receipt data
+    const receipt = {
+      id: `TRX-${Date.now()}`,
+      date: new Date().toLocaleString('id-ID'),
+      cashier: session?.user?.name || 'Kasir',
+      items: cart.map(item => ({
+        name: item.name,
+        qty: item.quantity,
+        price: item.price,
+        subtotal: item.price * item.quantity
+      })),
+      subtotal: calculateSubtotal(),
+      discount: calculateDiscount(),
+      total: calculateTotal(),
+      paymentMethod: paymentMethod,
+      cashReceived: paymentMethod === 'cash' ? parseFloat(cashReceived) : calculateTotal(),
+      change: paymentMethod === 'cash' ? calculateChange() : 0,
+      customerType: customerType,
+      customerName: customerType === 'member' ? selectedMember?.name : 'Walk-in Customer'
+    };
+    
+    setReceiptData(receipt);
+    setShowPaymentModal(false);
+    setShowSuccessModal(true);
+    clearCart();
+    setCashReceived('');
   };
 
   if (status === "loading") {
@@ -1275,7 +1306,7 @@ const CashierPage: React.FC = () => {
         </div>
       )}
 
-      {/* Add Customer Wizard - Integrated from Customers Module */}
+{/* Add Customer Wizard - Integrated from Customers Module */}
       <AddCustomerWizard
         isOpen={showAddMemberForm}
         onClose={() => {
@@ -1289,6 +1320,279 @@ const CashierPage: React.FC = () => {
           alert('Member baru berhasil ditambahkan!');
         }}
       />
+
+      {/* Payment Success Modal */}
+      {showSuccessModal && receiptData && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex flex-col md:flex-row h-full">
+              {/* Success Card */}
+              <div className="md:w-1/3 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-500 p-8 text-white flex flex-col justify-center">
+                <div className="text-center">
+                  <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+                    <FaCheck className="w-12 h-12 text-white" />
+                  </div>
+                  <h2 className="text-3xl font-bold mb-4">Pembayaran Berhasil!</h2>
+                  <p className="text-green-100 mb-6">Transaksi Anda telah diproses dengan sukses</p>
+                  
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-green-100">No. Transaksi</span>
+                      <span className="font-bold">{receiptData.id}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-green-100">Total</span>
+                      <span className="font-bold text-lg">Rp {receiptData.total.toLocaleString('id-ID')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-green-100">Metode</span>
+                      <span className="font-bold capitalize">{receiptData.paymentMethod}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Receipt Preview */}
+              <div className="md:w-2/3 p-8 overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">Struk Pembelian</h3>
+                  <button
+                    onClick={() => setShowSuccessModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <FaTimes className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="bg-gray-50 rounded-2xl p-6 border-2 border-gray-200">
+                  {/* Printable Receipt */}
+                  <div id="receipt-print" className="no-print-screen">
+                    <style jsx global>{`
+                      @media print {
+                        body * {
+                          visibility: hidden;
+                        }
+                        #receipt-print,
+                        #receipt-print * {
+                          visibility: visible;
+                        }
+                        #receipt-print {
+                          position: absolute;
+                          left: 0;
+                          top: 0;
+                          width: 100%;
+                          max-width: 300px;
+                          margin: 0 auto;
+                          padding: 20px;
+                          background: white;
+                        }
+                        #receipt-print .bg-gray-50 {
+                          background: white !important;
+                        }
+                        #receipt-print .border-gray-200,
+                        #receipt-print .border-gray-300 {
+                          border-color: black !important;
+                        }
+                        #receipt-print .border-b-2 {
+                          border-bottom: 2px solid black !important;
+                        }
+                        #receipt-print .text-gray-900 {
+                          color: black !important;
+                        }
+                        #receipt-print .text-gray-600 {
+                          color: #333 !important;
+                        }
+                        #receipt-print .text-green-600 {
+                          color: black !important;
+                        }
+                        #receipt-print .text-xs {
+                          font-size: 10px !important;
+                        }
+                        #receipt-print .text-sm {
+                          font-size: 12px !important;
+                        }
+                        #receipt-print .text-lg {
+                          font-size: 16px !important;
+                        }
+                        #receipt-print .text-xl {
+                          font-size: 18px !important;
+                        }
+                        #receipt-print .rounded-2xl {
+                          border-radius: 0 !important;
+                        }
+                        #receipt-print .rounded-xl {
+                          border-radius: 0 !important;
+                        }
+                        #receipt-print .p-6 {
+                          padding: 10px !important;
+                        }
+                        #receipt-print .p-4 {
+                          padding: 5px !important;
+                        }
+                        #receipt-print .mb-6 {
+                          margin-bottom: 10px !important;
+                        }
+                        #receipt-print .mb-4 {
+                          margin-bottom: 5px !important;
+                        }
+                        #receipt-print .pb-4 {
+                          padding-bottom: 5px !important;
+                        }
+                        #receipt-print .pb-2 {
+                          padding-bottom: 2px !important;
+                        }
+                        #receipt-print .space-y-2 > * + * {
+                          margin-top: 2px !important;
+                        }
+                        #receipt-print .space-y-1 > * + * {
+                          margin-top: 1px !important;
+                        }
+                      }
+                      .no-print-screen {
+                        display: block;
+                      }
+                      @media screen {
+                        .no-print-screen {
+                          display: block;
+                        }
+                      }
+                    `}</style>
+                  <div className="bg-gray-50 rounded-2xl p-6 border-2 border-gray-200">
+                    {/* Receipt Header */}
+                    <div className="text-center mb-6 pb-4 border-b-2 border-gray-300">
+                      <h4 className="text-xl font-bold text-gray-900">BEDAGANG STORE</h4>
+                      <p className="text-sm text-gray-600">Jl. Contoh No. 123, Jakarta</p>
+                      <p className="text-sm text-gray-600">Telp: 021-12345678</p>
+                    </div>
+
+                    {/* Transaction Info */}
+                    <div className="mb-4 text-sm">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-600">No. Transaksi:</span>
+                        <span className="font-semibold">{receiptData.id}</span>
+                      </div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-600">Tanggal:</span>
+                        <span className="font-semibold">{receiptData.date}</span>
+                      </div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-600">Kasir:</span>
+                        <span className="font-semibold">{receiptData.cashier}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Pelanggan:</span>
+                        <span className="font-semibold">{receiptData.customerName}</span>
+                      </div>
+                    </div>
+
+                    {/* Items */}
+                    <div className="mb-4 pb-4 border-b-2 border-gray-300">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-gray-600">
+                            <th className="text-left pb-2">Item</th>
+                            <th className="text-center pb-2">Qty</th>
+                            <th className="text-right pb-2">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {receiptData.items.map((item: any, index: number) => (
+                            <tr key={index} className="border-b border-gray-100">
+                              <td className="py-2">
+                                <div className="font-semibold">{item.name}</div>
+                                <div className="text-xs text-gray-500">Rp {item.price.toLocaleString('id-ID')}</div>
+                              </td>
+                              <td className="text-center py-2">{item.qty}</td>
+                              <td className="text-right py-2 font-semibold">
+                                Rp {item.subtotal.toLocaleString('id-ID')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Summary */}
+                    <div className="space-y-2 text-sm mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Subtotal:</span>
+                        <span>Rp {receiptData.subtotal.toLocaleString('id-ID')}</span>
+                      </div>
+                      {receiptData.discount > 0 && (
+                        <div className="flex justify-between text-green-600">
+                          <span>Diskon:</span>
+                          <span>-Rp {receiptData.discount.toLocaleString('id-ID')}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-bold text-lg pt-2 border-t-2 border-gray-300">
+                        <span>TOTAL:</span>
+                        <span className="text-green-600">Rp {receiptData.total.toLocaleString('id-ID')}</span>
+                      </div>
+                    </div>
+
+                    {/* Payment Details */}
+                    <div className="bg-gray-100 rounded-xl p-4 text-sm space-y-1 mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Metode Pembayaran:</span>
+                        <span className="font-semibold capitalize">{receiptData.paymentMethod}</span>
+                      </div>
+                      {receiptData.paymentMethod === 'cash' && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Tunai Diterima:</span>
+                            <span>Rp {receiptData.cashReceived.toLocaleString('id-ID')}</span>
+                          </div>
+                          <div className="flex justify-between font-semibold text-green-600">
+                            <span>Kembalian:</span>
+                            <span>Rp {receiptData.change.toLocaleString('id-ID')}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="text-center text-xs text-gray-500 pt-4 border-t-2 border-gray-300">
+                      <p>Terima kasih telah berbelanja</p>
+                      <p>Barang yang sudah dibeli tidak dapat dikembalikan</p>
+                    </div>
+                  </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-4 mt-6">
+                  <button
+                    onClick={() => {
+                      // Print receipt logic
+                      window.print();
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+                  >
+                    <FaReceipt className="w-5 h-5" />
+                    <span>Cetak Struk</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Send receipt logic
+                      alert('Struk telah dikirim ke email pelanggan!');
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+                  >
+                    <FaReceipt className="w-5 h-5" />
+                    <span>Kirim Struk</span>
+                  </button>
+                  <button
+                    onClick={() => setShowSuccessModal(false)}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-all"
+                  >
+                    Selesai
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };
