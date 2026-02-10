@@ -1,18 +1,10 @@
 import React from 'react';
 import { FaStore, FaChevronDown } from 'react-icons/fa';
 
-interface Branch {
-  id: string;
-  code: string;
-  name: string;
-  type: string;
-  isActive: boolean;
-}
-
 interface BranchSelectorProps {
-  branches: Branch[];
-  selectedBranch: Branch | null;
-  onSelect: (branch: Branch) => void;
+  branches: any[];
+  selectedBranch: any;
+  onSelect: (branch: any) => void;
   className?: string;
 }
 
@@ -38,8 +30,12 @@ const BranchSelector: React.FC<BranchSelectorProps> = ({
         <select
           value={selectedBranch?.id || ''}
           onChange={(e) => {
-            const branch = activeBranches.find(b => b.id === e.target.value);
-            if (branch) onSelect(branch);
+            if (e.target.value === '') {
+              onSelect(null);
+            } else {
+              const branch = activeBranches.find(b => b.id === e.target.value);
+              if (branch) onSelect(branch);
+            }
           }}
           className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
         >
