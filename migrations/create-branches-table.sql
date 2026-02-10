@@ -3,6 +3,9 @@
 -- Description: Multi-branch/multi-location store management
 -- ============================================================================
 
+-- Enable UUID extension if not exists
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- Create branches table
 CREATE TABLE IF NOT EXISTS branches (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

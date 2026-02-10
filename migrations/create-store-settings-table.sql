@@ -3,6 +3,9 @@
 -- Description: Advanced store and branch-specific settings
 -- ============================================================================
 
+-- Enable UUID extension if not exists
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- Create store_settings table
 CREATE TABLE IF NOT EXISTS store_settings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
