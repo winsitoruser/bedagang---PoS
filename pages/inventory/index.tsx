@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+import BranchSelector from '@/components/settings/BranchSelector';
+import { useBranches } from '@/hooks/useBranches';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +24,7 @@ import {
 const InventoryPage: React.FC = () => {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { branches, selectedBranch, setSelectedBranch } = useBranches();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [showProductModal, setShowProductModal] = useState(false);
@@ -39,7 +42,11 @@ const InventoryPage: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/inventory/stats');
+      const params = new URLSearchParams();
+      if (selectedBranch) {
+        params.append('branchId', selectedBranch.id);
+      }
+      const response = await fetch(`/api/inventory/stats?${params}`);
       const data = await response.json();
       if (data.success) {
         setStats(data.data);
@@ -59,6 +66,10 @@ const InventoryPage: React.FC = () => {
       
       if (searchQuery) {
         params.append('search', searchQuery);
+      }
+
+      if (selectedBranch) {
+        params.append('branchId', selectedBranch.id);
       }
 
       const response = await fetch(`/api/products?${params}`);
@@ -105,7 +116,7 @@ const InventoryPage: React.FC = () => {
     }
   }, [session, status, router]);
 
-  // Fetch stats on mount
+  // Fetch stats on mount and when branch changes
   useEffect(() => {
     fetchStats();
     fetchActivities();
@@ -117,12 +128,12 @@ const InventoryPage: React.FC = () => {
     }, 30000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedBranch]);
 
-  // Fetch products when page or search changes
+  // Fetch products when page, search, or branch changes
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, itemsPerPage, searchQuery]);
+  }, [currentPage, itemsPerPage, searchQuery, selectedBranch]);
 
   // Use real stats from API or fallback to loading state
   const statsData = stats || {
@@ -236,6 +247,17 @@ const InventoryPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Branch Selector */}
+        {branches.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm border p-4">
+            <BranchSelector
+              branches={branches}
+              selectedBranch={selectedBranch}
+              onSelect={setSelectedBranch}
+            />
+          </div>
+        )}
 
         {/* Marquee Ticker - Stock Alerts & Updates */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
