@@ -54,6 +54,9 @@ db.AlertSubscription = require('./AlertSubscription');
 db.AlertAction = require('./AlertAction');
 db.EmployeeSchedule = require('./EmployeeSchedule');
 db.ShiftTemplate = require('./ShiftTemplate');
+db.Store = require('./Store');
+db.Branch = require('./Branch');
+db.StoreSetting = require('./StoreSetting');
 
 // Load associations if they exist
 // Associations are defined in the models themselves or in separate files

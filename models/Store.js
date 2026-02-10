@@ -74,4 +74,18 @@ const Store = sequelize.define('Store', {
   timestamps: true
 });
 
+Store.associate = function(models) {
+  // Store has many Branches
+  Store.hasMany(models.Branch, {
+    foreignKey: 'storeId',
+    as: 'branches'
+  });
+
+  // Store has many Store Settings
+  Store.hasMany(models.StoreSetting, {
+    foreignKey: 'storeId',
+    as: 'storeSettings'
+  });
+};
+
 module.exports = Store;
