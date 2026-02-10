@@ -435,7 +435,29 @@ const InventoryPage: React.FC = () => {
         {/* Quick Actions - Enhanced */}
         <Card className="shadow-lg border-0">
           <CardHeader>
-            <CardTitle className="text-xl">Aksi Cepat</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl">Aksi Cepat</CardTitle>
+              <div className="flex gap-2">
+                <Link href="/inventory/products/new">
+                  <Button className="h-8 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm">
+                    <FaPlus className="mr-2 text-xs" />
+                    Tambah Produk
+                  </Button>
+                </Link>
+                <Link href="/inventory/receive">
+                  <Button className="h-8 px-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-sm">
+                    <FaTruck className="mr-2 text-xs" />
+                    Penerimaan Produk
+                  </Button>
+                </Link>
+                <Link href="/inventory/stock-opname">
+                  <Button className="h-8 px-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-sm">
+                    <FaClipboardList className="mr-2 text-xs" />
+                    Stock Opname
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
