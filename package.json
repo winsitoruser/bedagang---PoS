@@ -167,6 +167,7 @@
     "@types/file-saver": "^2.0.5",
     "@types/formidable": "^3.4.4",
     "@types/jest": "^29.5.14",
+    "@types/pg": "^8.16.0",
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-slick": "^0.23.11",
     "autoprefixer": "^10.4.16",
