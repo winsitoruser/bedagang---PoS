@@ -48,6 +48,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  PaymentMethodModal,
+  BankAccountModal,
+  CategoryModal,
+  DeleteConfirmationDialog
+} from "@/components/finance";
 
 const FinanceSettingsNewPage: NextPage = () => {
   const { data: session, status } = useSession();
@@ -58,10 +64,21 @@ const FinanceSettingsNewPage: NextPage = () => {
   const { summary, isLoading: summaryLoading, refresh: refreshSummary } = useFinanceSettingsSummary();
   const { paymentMethods, isLoading: pmLoading, refresh: refreshPM } = usePaymentMethods(true);
   const { bankAccounts, isLoading: bankLoading, refresh: refreshBank } = useBankAccounts();
-  const { categories: expenseCategories, isLoading: expenseLoading } = useFinanceCategories('expense');
-  const { categories: incomeCategories, isLoading: incomeLoading } = useFinanceCategories('income');
+  const { categories: expenseCategories, isLoading: expenseLoading, refresh: refreshExpense } = useFinanceCategories('expense');
+  const { categories: incomeCategories, isLoading: incomeLoading, refresh: refreshIncome } = useFinanceCategories('income');
   const { accounts, isLoading: accountsLoading } = useChartOfAccounts();
   const { assets, isLoading: assetsLoading } = useCompanyAssets();
+
+  // CRUD hooks
+  const { create: createPaymentMethod, update: updatePaymentMethod, remove: removePaymentMethod } = useFinanceSettingsCRUD('payment-methods');
+  const { create: createBankAccount, update: updateBankAccount, remove: removeBankAccount } = useFinanceSettingsCRUD('bank-accounts');
+  const { create: createCategory, update: updateCategory, remove: removeCategory } = useFinanceSettingsCRUD('categories');
+
+  // Modal states
+  const [paymentMethodModal, setPaymentMethodModal] = useState({ isOpen: false, mode: 'create' as 'create' | 'edit', data: null as any });
+  const [bankAccountModal, setBankAccountModal] = useState({ isOpen: false, mode: 'create' as 'create' | 'edit', data: null as any });
+  const [categoryModal, setCategoryModal] = useState({ isOpen: false, mode: 'create' as 'create' | 'edit', data: null as any, type: 'expense' as 'income' | 'expense' });
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, type: '', id: 0, name: '' });
 
   // Redirect if not authenticated
   if (status === "unauthenticated") {
@@ -70,6 +87,53 @@ const FinanceSettingsNewPage: NextPage = () => {
   }
 
   const isLoading = summaryLoading || pmLoading || bankLoading;
+
+  // CRUD Handlers
+  const handleSavePaymentMethod = async (data: any) => {
+    if (paymentMethodModal.mode === 'create') {
+      await createPaymentMethod(data);
+    } else {
+      await updatePaymentMethod(data);
+    }
+    refreshPM();
+    refreshSummary();
+  };
+
+  const handleSaveBankAccount = async (data: any) => {
+    if (bankAccountModal.mode === 'create') {
+      await createBankAccount(data);
+    } else {
+      await updateBankAccount(data);
+    }
+    refreshBank();
+    refreshSummary();
+  };
+
+  const handleSaveCategory = async (data: any) => {
+    if (categoryModal.mode === 'create') {
+      await createCategory(data);
+    } else {
+      await updateCategory(data);
+    }
+    refreshExpense();
+    refreshIncome();
+    refreshSummary();
+  };
+
+  const handleDelete = async () => {
+    if (deleteDialog.type === 'payment-method') {
+      await removePaymentMethod(deleteDialog.id);
+      refreshPM();
+    } else if (deleteDialog.type === 'bank-account') {
+      await removeBankAccount(deleteDialog.id);
+      refreshBank();
+    } else if (deleteDialog.type === 'category') {
+      await removeCategory(deleteDialog.id);
+      refreshExpense();
+      refreshIncome();
+    }
+    refreshSummary();
+  };
 
   const iconMap: Record<string, React.ReactNode> = {
     FaCreditCard: <FaCreditCard className="w-5 h-5" />,
@@ -272,7 +336,10 @@ const FinanceSettingsNewPage: NextPage = () => {
                     <h3 className="text-lg font-semibold">Metode Pembayaran</h3>
                     <p className="text-sm text-gray-500">Kelola metode pembayaran yang tersedia</p>
                   </div>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Button 
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={() => setPaymentMethodModal({ isOpen: true, mode: 'create', data: null })}
+                  >
                     <FaPlus className="mr-2" />
                     Tambah Metode
                   </Button>
@@ -317,10 +384,19 @@ const FinanceSettingsNewPage: NextPage = () => {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setPaymentMethodModal({ isOpen: true, mode: 'edit', data: method })}
+                            >
                               <FaEdit />
                             </Button>
-                            <Button variant="ghost" size="sm" className="text-red-600">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-600"
+                              onClick={() => setDeleteDialog({ isOpen: true, type: 'payment-method', id: method.id, name: method.name })}
+                            >
                               <FaTrash />
                             </Button>
                           </TableCell>
@@ -338,7 +414,10 @@ const FinanceSettingsNewPage: NextPage = () => {
                     <h3 className="text-lg font-semibold">Rekening Bank</h3>
                     <p className="text-sm text-gray-500">Kelola rekening bank perusahaan</p>
                   </div>
-                  <Button className="bg-green-600 hover:bg-green-700">
+                  <Button 
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => setBankAccountModal({ isOpen: true, mode: 'create', data: null })}
+                  >
                     <FaPlus className="mr-2" />
                     Tambah Rekening
                   </Button>
@@ -390,10 +469,19 @@ const FinanceSettingsNewPage: NextPage = () => {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setBankAccountModal({ isOpen: true, mode: 'edit', data: account })}
+                            >
                               <FaEdit />
                             </Button>
-                            <Button variant="ghost" size="sm" className="text-red-600">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-600"
+                              onClick={() => setDeleteDialog({ isOpen: true, type: 'bank-account', id: account.id, name: account.bank_name })}
+                            >
                               <FaTrash />
                             </Button>
                           </TableCell>
@@ -413,7 +501,10 @@ const FinanceSettingsNewPage: NextPage = () => {
                       <h3 className="text-lg font-semibold">Kategori Pengeluaran</h3>
                       <p className="text-sm text-gray-500">Kategori untuk mencatat pengeluaran</p>
                     </div>
-                    <Button className="bg-red-600 hover:bg-red-700">
+                    <Button 
+                      className="bg-red-600 hover:bg-red-700"
+                      onClick={() => setCategoryModal({ isOpen: true, mode: 'create', data: null, type: 'expense' })}
+                    >
                       <FaPlus className="mr-2" />
                       Tambah Kategori
                     </Button>
@@ -437,10 +528,20 @@ const FinanceSettingsNewPage: NextPage = () => {
                           </div>
                           <p className="text-sm text-gray-600 mb-3">{category.description}</p>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm" className="flex-1">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1"
+                              onClick={() => setCategoryModal({ isOpen: true, mode: 'edit', data: category, type: 'expense' })}
+                            >
                               <FaEdit className="mr-1" /> Edit
                             </Button>
-                            <Button variant="outline" size="sm" className="text-red-600">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-red-600"
+                              onClick={() => setDeleteDialog({ isOpen: true, type: 'category', id: category.id, name: category.name })}
+                            >
                               <FaTrash />
                             </Button>
                           </div>
@@ -457,7 +558,10 @@ const FinanceSettingsNewPage: NextPage = () => {
                       <h3 className="text-lg font-semibold">Kategori Pendapatan</h3>
                       <p className="text-sm text-gray-500">Kategori untuk mencatat pendapatan</p>
                     </div>
-                    <Button className="bg-green-600 hover:bg-green-700">
+                    <Button 
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => setCategoryModal({ isOpen: true, mode: 'create', data: null, type: 'income' })}
+                    >
                       <FaPlus className="mr-2" />
                       Tambah Kategori
                     </Button>
@@ -481,10 +585,20 @@ const FinanceSettingsNewPage: NextPage = () => {
                           </div>
                           <p className="text-sm text-gray-600 mb-3">{category.description}</p>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm" className="flex-1">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1"
+                              onClick={() => setCategoryModal({ isOpen: true, mode: 'edit', data: category, type: 'income' })}
+                            >
                               <FaEdit className="mr-1" /> Edit
                             </Button>
-                            <Button variant="outline" size="sm" className="text-red-600">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-red-600"
+                              onClick={() => setDeleteDialog({ isOpen: true, type: 'category', id: category.id, name: category.name })}
+                            >
                               <FaTrash />
                             </Button>
                           </div>
@@ -640,6 +754,41 @@ const FinanceSettingsNewPage: NextPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modals */}
+      <PaymentMethodModal
+        isOpen={paymentMethodModal.isOpen}
+        onClose={() => setPaymentMethodModal({ ...paymentMethodModal, isOpen: false })}
+        onSave={handleSavePaymentMethod}
+        paymentMethod={paymentMethodModal.data}
+        mode={paymentMethodModal.mode}
+      />
+
+      <BankAccountModal
+        isOpen={bankAccountModal.isOpen}
+        onClose={() => setBankAccountModal({ ...bankAccountModal, isOpen: false })}
+        onSave={handleSaveBankAccount}
+        bankAccount={bankAccountModal.data}
+        mode={bankAccountModal.mode}
+      />
+
+      <CategoryModal
+        isOpen={categoryModal.isOpen}
+        onClose={() => setCategoryModal({ ...categoryModal, isOpen: false })}
+        onSave={handleSaveCategory}
+        category={categoryModal.data}
+        mode={categoryModal.mode}
+        defaultType={categoryModal.type}
+      />
+
+      <DeleteConfirmationDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ ...deleteDialog, isOpen: false })}
+        onConfirm={handleDelete}
+        title="Konfirmasi Hapus"
+        description="Apakah Anda yakin ingin menghapus data ini?"
+        itemName={deleteDialog.name}
+      />
     </FinanceLayout>
   );
 };
