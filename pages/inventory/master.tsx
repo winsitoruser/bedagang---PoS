@@ -11,14 +11,31 @@ import { Badge } from '@/components/ui/badge';
 import {
   FaBoxOpen, FaLayerGroup, FaUsers, FaTags,
   FaPlus, FaSearch, FaEdit, FaTrash,
-  FaWarehouse, FaIndustry, FaCubes, FaBoxes
+  FaWarehouse, FaIndustry, FaCubes, FaBoxes, FaSync
 } from 'react-icons/fa';
+import { 
+  useMasterSummary, 
+  useCategories, 
+  useSuppliers, 
+  useUnits, 
+  useBrands, 
+  useWarehouses, 
+  useTags 
+} from '@/hooks/useInventoryMaster';
 
 const InventoryMasterPage: React.FC = () => {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
+
+  // Fetch data from backend using hooks
+  const { summary, isLoading: summaryLoading, refresh: refreshSummary } = useMasterSummary();
+  const { categories, count: categoriesCount } = useCategories();
+  const { suppliers, count: suppliersCount } = useSuppliers();
+  const { units, count: unitsCount } = useUnits();
+  const { brands, count: brandsCount } = useBrands();
+  const { warehouses, count: warehousesCount } = useWarehouses();
+  const { tags, count: tagsCount } = useTags();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -26,12 +43,7 @@ const InventoryMasterPage: React.FC = () => {
     }
   }, [session, status, router]);
 
-  useEffect(() => {
-    // Simulate loading
-    setTimeout(() => setLoading(false), 500);
-  }, []);
-
-  if (status === "loading" || loading) {
+  if (status === "loading" || summaryLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-screen">
@@ -68,8 +80,21 @@ const InventoryMasterPage: React.FC = () => {
               <div className="hidden lg:flex items-center space-x-4">
                 <div className="text-right bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3 border border-white/20">
                   <p className="text-xs text-green-100">Total Master Data</p>
-                  <p className="text-sm font-bold">4 Kategori</p>
+                  <p className="text-2xl font-bold">
+                    {(summary?.categories || 0) + (summary?.suppliers || 0) + (summary?.units || 0) + 
+                     (summary?.brands || 0) + (summary?.warehouses || 0) + (summary?.locations || 0) + 
+                     (summary?.manufacturers || 0) + (summary?.tags || 0)}
+                  </p>
                 </div>
+                <Button
+                  onClick={() => refreshSummary()}
+                  variant="outline"
+                  size="sm"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  <FaSync className="mr-2" />
+                  Refresh
+                </Button>
               </div>
             </div>
           </div>
@@ -119,7 +144,7 @@ const InventoryMasterPage: React.FC = () => {
                     <span className="text-xs text-blue-700 mt-1">Kelola kategori</span>
                   </div>
                   <div className="absolute top-2 right-2">
-                    <Badge className="bg-blue-500 text-white text-xs">12</Badge>
+                    <Badge className="bg-blue-500 text-white text-xs">{summary?.categories || 0}</Badge>
                   </div>
                 </div>
               </Link>
@@ -135,7 +160,7 @@ const InventoryMasterPage: React.FC = () => {
                     <span className="text-xs text-green-700 mt-1">Kelola supplier</span>
                   </div>
                   <div className="absolute top-2 right-2">
-                    <Badge className="bg-green-500 text-white text-xs">8</Badge>
+                    <Badge className="bg-green-500 text-white text-xs">{summary?.suppliers || 0}</Badge>
                   </div>
                 </div>
               </Link>
@@ -151,7 +176,7 @@ const InventoryMasterPage: React.FC = () => {
                     <span className="text-xs text-purple-700 mt-1">Kelola satuan</span>
                   </div>
                   <div className="absolute top-2 right-2">
-                    <Badge className="bg-purple-500 text-white text-xs">15</Badge>
+                    <Badge className="bg-purple-500 text-white text-xs">{summary?.units || 0}</Badge>
                   </div>
                 </div>
               </Link>
@@ -167,7 +192,7 @@ const InventoryMasterPage: React.FC = () => {
                     <span className="text-xs text-orange-700 mt-1">Kelola brand</span>
                   </div>
                   <div className="absolute top-2 right-2">
-                    <Badge className="bg-orange-500 text-white text-xs">20</Badge>
+                    <Badge className="bg-orange-500 text-white text-xs">{summary?.brands || 0}</Badge>
                   </div>
                 </div>
               </Link>
@@ -183,7 +208,7 @@ const InventoryMasterPage: React.FC = () => {
                     <span className="text-xs text-indigo-700 mt-1">Kelola gudang</span>
                   </div>
                   <div className="absolute top-2 right-2">
-                    <Badge className="bg-indigo-500 text-white text-xs">3</Badge>
+                    <Badge className="bg-indigo-500 text-white text-xs">{summary?.warehouses || 0}</Badge>
                   </div>
                 </div>
               </Link>
@@ -199,7 +224,7 @@ const InventoryMasterPage: React.FC = () => {
                     <span className="text-xs text-cyan-700 mt-1">Kelola lokasi</span>
                   </div>
                   <div className="absolute top-2 right-2">
-                    <Badge className="bg-cyan-500 text-white text-xs">25</Badge>
+                    <Badge className="bg-cyan-500 text-white text-xs">{summary?.locations || 0}</Badge>
                   </div>
                 </div>
               </Link>
@@ -215,7 +240,7 @@ const InventoryMasterPage: React.FC = () => {
                     <span className="text-xs text-pink-700 mt-1">Kelola pabrik</span>
                   </div>
                   <div className="absolute top-2 right-2">
-                    <Badge className="bg-pink-500 text-white text-xs">10</Badge>
+                    <Badge className="bg-pink-500 text-white text-xs">{summary?.manufacturers || 0}</Badge>
                   </div>
                 </div>
               </Link>
@@ -231,7 +256,7 @@ const InventoryMasterPage: React.FC = () => {
                     <span className="text-xs text-yellow-700 mt-1">Kelola tags</span>
                   </div>
                   <div className="absolute top-2 right-2">
-                    <Badge className="bg-yellow-500 text-white text-xs">18</Badge>
+                    <Badge className="bg-yellow-500 text-white text-xs">{summary?.tags || 0}</Badge>
                   </div>
                 </div>
               </Link>
