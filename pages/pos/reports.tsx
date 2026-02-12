@@ -1,23 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { 
   FaChartBar, FaCalendar, FaDownload, FaPrint,
-  FaArrowUp, FaArrowDown, FaShoppingCart, FaMoneyBillWave
+  FaArrowUp, FaArrowDown, FaShoppingCart, FaMoneyBillWave, FaInfoCircle
 } from 'react-icons/fa';
+import { 
+  fetchSalesSummaryReport, 
+  fetchTopProductsReport,
+  generatePOSReport,
+  SalesSummary,
+  TopProduct
+} from '@/lib/adapters/pos-reports-adapter';
 
 const ReportsPage: React.FC = () => {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [dateRange, setDateRange] = useState('today');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFromMock, setIsFromMock] = useState(false);
+  const [salesSummary, setSalesSummary] = useState<SalesSummary | null>(null);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+
+  // Load reports data
+  const loadReportsData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch sales summary
+      const summaryResult = await fetchSalesSummaryReport({ period: dateRange });
+      if (summaryResult.success && summaryResult.data) {
+        setSalesSummary(summaryResult.data);
+        setIsFromMock(summaryResult.isFromMock);
+      }
+
+      // Fetch top products
+      const productsResult = await fetchTopProductsReport({ period: dateRange, limit: 5 });
+      if (productsResult.success && productsResult.data) {
+        setTopProducts(productsResult.data);
+      }
+    } catch (error) {
+      console.error('Error loading reports:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   React.useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
     }
   }, [session, status, router]);
+
+  // Load data when dateRange changes
+  useEffect(() => {
+    if (status === "authenticated") {
+      loadReportsData();
+    }
+  }, [dateRange, status]);
 
   if (status === "loading") {
     return (
@@ -32,20 +73,24 @@ const ReportsPage: React.FC = () => {
     );
   }
 
-  const salesData = [
-    { period: "00:00 - 06:00", sales: 1200000, transactions: 8 },
-    { period: "06:00 - 12:00", sales: 4500000, transactions: 32 },
-    { period: "12:00 - 18:00", sales: 6800000, transactions: 58 },
-    { period: "18:00 - 24:00", sales: 3200000, transactions: 28 },
-  ];
+  // Handle export
+  const handleExport = async (format: 'pdf' | 'excel' | 'csv') => {
+    try {
+      const result = await generatePOSReport('sales-summary', { period: dateRange }, format);
+      if (result.success && result.data) {
+        alert(`Laporan berhasil dibuat!\nID: ${result.data.reportId}`);
+      } else {
+        alert('Gagal membuat laporan. Silakan coba lagi.');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Terjadi kesalahan saat export laporan.');
+    }
+  };
 
-  const topProducts = [
-    { name: "Produk A", sold: 145, revenue: 2900000 },
-    { name: "Produk B", sold: 128, revenue: 2560000 },
-    { name: "Produk C", sold: 98, revenue: 1960000 },
-    { name: "Produk D", sold: 87, revenue: 1740000 },
-    { name: "Produk E", sold: 76, revenue: 1520000 },
-  ];
+  // Get data from API or use empty defaults
+  const salesData = salesSummary?.timeBreakdown || [];
+  const topProductsData = topProducts || [];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -122,72 +167,92 @@ const ReportsPage: React.FC = () => {
               </button>
             </div>
             <div className="flex gap-2">
-              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+              <button 
+                onClick={() => window.print()}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
                 <FaPrint className="text-gray-600" />
                 <span className="text-gray-700">Cetak</span>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+              <button 
+                onClick={() => handleExport('excel')}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                disabled={isLoading}
+              >
                 <FaDownload />
-                <span>Export</span>
+                <span>{isLoading ? 'Loading...' : 'Export'}</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <FaMoneyBillWave className="w-6 h-6 text-green-600" />
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div className="h-12 w-12 bg-gray-200 rounded-lg mb-4"></div>
+                <div className="h-4 w-24 bg-gray-200 rounded mb-2"></div>
+                <div className="h-8 w-32 bg-gray-200 rounded"></div>
               </div>
-              <span className="flex items-center text-green-600 text-sm font-medium">
-                <FaArrowUp className="mr-1" /> 12%
-              </span>
-            </div>
-            <p className="text-sm text-gray-600 mb-1">Total Penjualan</p>
-            <p className="text-2xl font-bold text-gray-900">Rp 15.7 Jt</p>
+            ))}
           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <FaMoneyBillWave className="w-6 h-6 text-green-600" />
+                </div>
+                {isFromMock && (
+                  <span className="text-xs px-2 py-1 bg-orange-100 text-orange-600 rounded-full">
+                    <FaInfoCircle className="inline mr-1" />Mock
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-600 mb-1">Total Penjualan</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {formatCurrency(salesSummary?.summary.totalSales || 0)}
+              </p>
+            </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FaShoppingCart className="w-6 h-6 text-blue-600" />
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <FaShoppingCart className="w-6 h-6 text-blue-600" />
+                </div>
               </div>
-              <span className="flex items-center text-green-600 text-sm font-medium">
-                <FaArrowUp className="mr-1" /> 8%
-              </span>
+              <p className="text-sm text-gray-600 mb-1">Total Transaksi</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {salesSummary?.summary.totalTransactions || 0}
+              </p>
             </div>
-            <p className="text-sm text-gray-600 mb-1">Total Transaksi</p>
-            <p className="text-2xl font-bold text-gray-900">126</p>
-          </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <FaChartBar className="w-6 h-6 text-purple-600" />
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <FaChartBar className="w-6 h-6 text-purple-600" />
+                </div>
               </div>
-              <span className="flex items-center text-red-600 text-sm font-medium">
-                <FaArrowDown className="mr-1" /> 2%
-              </span>
+              <p className="text-sm text-gray-600 mb-1">Rata-rata Transaksi</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {formatCurrency(salesSummary?.summary.averageTransaction || 0)}
+              </p>
             </div>
-            <p className="text-sm text-gray-600 mb-1">Rata-rata Transaksi</p>
-            <p className="text-2xl font-bold text-gray-900">Rp 125K</p>
-          </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <FaShoppingCart className="w-6 h-6 text-orange-600" />
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <FaShoppingCart className="w-6 h-6 text-orange-600" />
+                </div>
               </div>
-              <span className="flex items-center text-green-600 text-sm font-medium">
-                <FaArrowUp className="mr-1" /> 15%
-              </span>
+              <p className="text-sm text-gray-600 mb-1">Produk Terjual</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {salesSummary?.summary.totalItemsSold || 0}
+              </p>
             </div>
-            <p className="text-sm text-gray-600 mb-1">Produk Terjual</p>
-            <p className="text-2xl font-bold text-gray-900">534</p>
           </div>
-        </div>
+        )}
 
         {/* Sales by Time */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -240,18 +305,18 @@ const ReportsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {topProducts.map((product, index) => (
+                {topProductsData.map((product, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-600 font-bold">
-                        {index + 1}
+                        {product.rank || index + 1}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-gray-900">{product.name}</span>
+                      <span className="text-sm font-medium text-gray-900">{product.productName}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900">{product.sold} unit</span>
+                      <span className="text-sm text-gray-900">{product.totalSold} unit</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-semibold text-gray-900">
