@@ -130,6 +130,11 @@ PosTransaction.associate = (models) => {
     foreignKey: 'shiftId',
     as: 'shift'
   });
+  
+  PosTransaction.belongsTo(models.HeldTransaction, {
+    foreignKey: 'heldTransactionId',
+    as: 'heldTransaction'
+  });
 };
 
 module.exports = PosTransaction;

@@ -243,26 +243,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     } catch (dbError: any) {
       console.error('Database error:', dbError);
-      
-      // Fallback to mock data if database query fails
-      return res.status(200).json({
-        success: true,
-        data: {
-          today: {
-            transactions: 0,
-            sales: 0,
-            items: 0,
-            avgTransaction: 0
-          },
-          changes: {
-            transactions: 0,
-            sales: 0
-          },
-          salesTrend: generateMockSalesTrend(period as string),
-          paymentMethods: [],
-          topProducts: []
-        },
-        warning: 'Using fallback data - database not ready'
+      return res.status(500).json({
+        success: false,
+        error: 'Database error - failed to fetch dashboard stats',
+        details: dbError.message
       });
     }
 
@@ -274,30 +258,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       details: error.message
     });
   }
-}
-
-// Fallback mock data generator
-function generateMockSalesTrend(period: string) {
-  const today = new Date();
-  const data = [];
-  
-  let days = 7;
-  if (period === '30d') days = 30;
-  else if (period === '3m') days = 90;
-  else if (period === '6m') days = 180;
-  else if (period === '1y') days = 365;
-  
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const dateStr = date.toISOString().split('T')[0];
-    
-    data.push({
-      date: dateStr,
-      transactions: 0,
-      sales: 0
-    });
-  }
-  
-  return data;
 }

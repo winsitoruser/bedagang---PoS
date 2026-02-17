@@ -1,9 +1,9 @@
 const db = require('../../../models');
-const { Product } = db;
+const { Product, StockMovement } = db;
 
 /**
  * GET /api/inventory/activities
- * Returns recent inventory activities (stock movements, adjustments, etc)
+ * Returns recent inventory activities from stock_movements table
  */
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -16,51 +16,62 @@ export default async function handler(req, res) {
   try {
     const { limit = 20, type, product_id } = req.query;
 
-    // Build where clause
+    // Build where clause using snake_case (database column names)
     const where = {};
     
     if (type) {
-      where.activity_type = type;
+      where.movement_type = type;
     }
     
     if (product_id) {
       where.product_id = product_id;
     }
 
-    // For now, we'll create mock activities based on recent product updates
-    // In production, you should have a dedicated stock_movements or inventory_activities table
-    
-    // Get recently updated products as proxy for activities
-    const recentProducts = await Product.findAll({
-      where: { is_active: true },
-      order: [['updated_at', 'DESC']],
+    // Get real stock movements from database
+    const movements = await StockMovement.findAll({
+      where,
+      include: [{
+        model: Product,
+        as: 'product',
+        attributes: ['id', 'name', 'sku'],
+        required: false
+      }],
+      order: [['created_at', 'DESC']],
       limit: parseInt(limit),
-      attributes: ['id', 'name', 'sku', 'stock', 'updated_at', 'created_at'],
-      paranoid: false
+      attributes: [
+        'id',
+        'product_id',
+        'movement_type',
+        'quantity',
+        'balance_before',
+        'balance_after',
+        'reference_type',
+        'reference_id',
+        'notes',
+        'created_at'
+      ],
+      raw: false
     });
 
     // Transform to activity format
-    const activities = recentProducts.map((product, index) => {
-      // Simulate different activity types
-      const types = ['in', 'out', 'adjustment', 'transfer'];
-      const activityType = types[index % types.length];
+    const activities = movements.map((movement) => {
+      const data = movement.dataValues || movement;
+      const productData = movement.product?.dataValues || movement.product;
       
-      let quantity = Math.floor(Math.random() * 50) + 1;
-      if (activityType === 'out' || activityType === 'adjustment') {
-        quantity = -quantity;
-      }
-
       return {
-        id: `activity-${product.id}-${index}`,
-        type: activityType,
-        product_id: product.id,
-        product_name: product.name,
-        product_sku: product.sku,
-        quantity: quantity,
-        current_stock: product.stock,
-        user: 'Admin', // In production, get from user session
-        timestamp: product.updated_at || product.created_at,
-        notes: getActivityNotes(activityType, product.name, quantity)
+        id: data.id,
+        type: data.movement_type,
+        product_id: data.product_id,
+        product_name: productData?.name || 'Unknown Product',
+        product_sku: productData?.sku || '',
+        quantity: parseFloat(data.quantity),
+        previous_stock: parseFloat(data.balance_before || 0),
+        current_stock: parseFloat(data.balance_after || 0),
+        reference_type: data.reference_type,
+        reference_id: data.reference_id,
+        user: 'Admin',
+        timestamp: data.created_at,
+        notes: data.notes || getActivityNotes(data.movement_type, productData?.name, data.quantity)
       };
     });
 
@@ -95,23 +106,3 @@ function getActivityNotes(type, productName, quantity) {
       return `Aktivitas ${productName}`;
   }
 }
-
-/**
- * NOTE: For production, create a proper stock_movements table:
- * 
- * CREATE TABLE stock_movements (
- *   id UUID PRIMARY KEY,
- *   product_id INTEGER REFERENCES products(id),
- *   movement_type VARCHAR(50), -- 'in', 'out', 'adjustment', 'transfer', 'return'
- *   quantity DECIMAL(10,2),
- *   previous_stock DECIMAL(10,2),
- *   new_stock DECIMAL(10,2),
- *   reference_type VARCHAR(50), -- 'purchase_order', 'sale', 'adjustment', 'transfer'
- *   reference_id VARCHAR(100),
- *   warehouse_from VARCHAR(100),
- *   warehouse_to VARCHAR(100),
- *   user_id UUID REFERENCES users(id),
- *   notes TEXT,
- *   created_at TIMESTAMP DEFAULT NOW()
- * );
- */

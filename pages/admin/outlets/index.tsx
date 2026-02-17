@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
+import AdminLayout from '@/components/admin/AdminLayout';
 import {
   Store,
   Search,
@@ -139,12 +140,14 @@ export default function OutletsManagement() {
 
   if (loading && outlets.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading outlets...</p>
+      <AdminLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading outlets...</p>
+          </div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
@@ -154,34 +157,25 @@ export default function OutletsManagement() {
         <title>Outlets Management - Admin Bedagang</title>
       </Head>
 
-      <div className="min-h-screen bg-gray-50">
+      <AdminLayout>
         {/* Header */}
-        <div className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Link href="/admin" className="text-gray-400 hover:text-gray-600">
-                  <ChevronLeft className="h-6 w-6" />
-                </Link>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Outlets Management</h1>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Monitor all POS outlets across partners
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-gray-900">{totalOutlets}</p>
-                  <p className="text-xs text-gray-500">Total Outlets</p>
-                </div>
-              </div>
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Outlets Management</h1>
+              <p className="mt-2 text-sm text-gray-600">
+                Monitor all POS outlets across partners
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-gray-900">{totalOutlets}</p>
+              <p className="text-xs text-gray-500">Total Outlets</p>
             </div>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div>
           {/* Filters */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -378,7 +372,7 @@ export default function OutletsManagement() {
             </div>
           )}
         </div>
-      </div>
+      </AdminLayout>
     </>
   );
 }

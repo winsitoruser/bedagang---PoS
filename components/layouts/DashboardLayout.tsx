@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { useBusinessType } from '@/contexts/BusinessTypeContext';
 import { 
   LayoutDashboard, 
   Package, 
@@ -18,7 +19,11 @@ import {
   Award,
   ChevronLeft,
   ChevronRight,
-  CalendarDays
+  CalendarDays,
+  Utensils,
+  Calendar,
+  DollarSign,
+  ChefHat
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -28,6 +33,7 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { data: session } = useSession();
   const router = useRouter();
+  const { hasModule, isLoading: configLoading } = useBusinessType();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
@@ -51,18 +57,51 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     localStorage.setItem('sidebarCollapsed', String(newState));
   };
 
-  const menuItems = [
-    { icon: LayoutDashboard, label: 'Dasbor', href: '/dashboard' },
-    { icon: ShoppingCart, label: 'Kasir', href: '/pos' },
-    { icon: Package, label: 'Inventori', href: '/inventory' },
-    { icon: Wallet, label: 'Keuangan', href: '/finance' },
-    { icon: Users, label: 'Pelanggan', href: '/customers' },
-    { icon: CalendarDays, label: 'Jadwal & Shift', href: '/employees/schedules' },
-    { icon: Ticket, label: 'Promo & Voucher', href: '/promo-voucher' },
-    { icon: Award, label: 'Program Loyalitas', href: '/loyalty-program' },
-    { icon: BarChart3, label: 'Laporan', href: '/reports' },
-    { icon: Settings, label: 'Pengaturan', href: '/settings' },
+  // Define grouped menu structure
+  const menuGroups = [
+    {
+      title: 'OUTLET',
+      items: [
+        { code: 'dashboard', icon: LayoutDashboard, label: 'Dasbor', href: '/dashboard' },
+        { code: 'pos', icon: ShoppingCart, label: 'Kasir', href: '/pos' },
+        { code: 'inventory', icon: Package, label: 'Inventori', href: '/inventory' },
+        { code: 'customers', icon: Users, label: 'Pelanggan', href: '/customers' },
+        { code: 'employees', icon: CalendarDays, label: 'Jadwal & Shift', href: '/employees/schedules' },
+        { code: 'loyalty', icon: Award, label: 'Program Loyalitas', href: '/loyalty-program' },
+      ]
+    },
+    {
+      title: 'OPERASIONAL',
+      items: [
+        { code: 'tables', icon: Utensils, label: 'Manajemen Meja', href: '/tables' },
+        { code: 'reservations', icon: Calendar, label: 'Reservasi', href: '/reservations' },
+        { code: 'kitchen', icon: ChefHat, label: 'Management Kitchen', href: '/kitchen' },
+        { code: 'promo', icon: Ticket, label: 'Promo & Voucher', href: '/promo-voucher' },
+      ]
+    },
+    {
+      title: 'BACKOFFICE',
+      items: [
+        { code: 'finance', icon: Wallet, label: 'Keuangan', href: '/finance' },
+        { code: 'reports', icon: BarChart3, label: 'Laporan', href: '/reports' },
+        { code: 'settings', icon: Settings, label: 'Pengaturan', href: '/settings' },
+      ]
+    }
   ];
+
+  // Filter menu groups based on enabled modules
+  // IMPORTANT: Show ALL menus for owner role (full access)
+  const userRole = session?.user?.role;
+  const isOwnerOrSuperAdmin = userRole === 'owner' || userRole === 'super_admin';
+  
+  const filteredMenuGroups = menuGroups.map(group => ({
+    ...group,
+    items: configLoading
+      ? group.items // Show all during loading
+      : isOwnerOrSuperAdmin
+        ? group.items // Owner and super_admin see ALL menus
+        : group.items.filter(item => hasModule(item.code)) // Others filtered by modules
+  })).filter(group => group.items.length > 0); // Remove empty groups
 
   const handleLogout = async () => {
     await signOut({ redirect: false });
@@ -102,40 +141,61 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = router.pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all group relative ${
-                  isActive
-                    ? 'bg-sky-50 text-sky-600 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                } ${
-                  sidebarCollapsed ? 'lg:justify-center lg:px-0' : ''
-                }`}
-                title={sidebarCollapsed ? item.label : ''}
-              >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${
-                  sidebarCollapsed ? 'lg:mx-auto' : ''
-                }`} />
-                <span className={`transition-all ${
-                  sidebarCollapsed ? 'lg:hidden' : ''
-                }`}>{item.label}</span>
-                
-                {/* Tooltip for collapsed state */}
-                {sidebarCollapsed && (
-                  <div className="hidden lg:block absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
-                    {item.label}
-                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
-                  </div>
-                )}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-4 py-6 space-y-6 overflow-y-auto">
+          {filteredMenuGroups.map((group, groupIndex) => (
+            <div key={groupIndex}>
+              {/* Section Header */}
+              {!sidebarCollapsed && (
+                <div className="px-4 mb-2">
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    {group.title}
+                  </h3>
+                </div>
+              )}
+              
+              {/* Divider for collapsed state */}
+              {sidebarCollapsed && groupIndex > 0 && (
+                <div className="my-2 border-t border-gray-200"></div>
+              )}
+              
+              {/* Menu Items */}
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = router.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all group relative ${
+                        isActive
+                          ? 'bg-sky-50 text-sky-600 font-medium'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      } ${
+                        sidebarCollapsed ? 'lg:justify-center lg:px-0' : ''
+                      }`}
+                      title={sidebarCollapsed ? item.label : ''}
+                    >
+                      <Icon className={`w-5 h-5 flex-shrink-0 ${
+                        sidebarCollapsed ? 'lg:mx-auto' : ''
+                      }`} />
+                      <span className={`transition-all ${
+                        sidebarCollapsed ? 'lg:hidden' : ''
+                      }`}>{item.label}</span>
+                      
+                      {/* Tooltip for collapsed state */}
+                      {sidebarCollapsed && (
+                        <div className="hidden lg:block absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                          {item.label}
+                          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* User Info & Logout */}
@@ -212,7 +272,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             </button>
             <div className="flex-1 lg:flex-none">
               <h1 className="text-xl font-semibold text-gray-900">
-                {menuItems.find(item => item.href === router.pathname)?.label || 'Dashboard'}
+                {filteredMenuGroups.flatMap(g => g.items).find(item => item.href === router.pathname)?.label || 'Dashboard'}
               </h1>
             </div>
           </div>

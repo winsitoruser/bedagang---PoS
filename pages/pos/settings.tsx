@@ -4,6 +4,7 @@ import { NextPage } from 'next';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import Draggable from 'react-draggable';
+import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Button } from '../../components/ui/button';
 import { useToast } from '../../components/ui/use-toast';
 import { Input } from '../../components/ui/input';
@@ -320,8 +321,8 @@ const SettingsPage: NextPage = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <div className="flex flex-col flex-1 overflow-hidden">
+    <DashboardLayout>
+      <div className="-m-6 flex flex-col flex-1 overflow-hidden">
 
         <style jsx global>{`
           .printer-card {
@@ -340,13 +341,13 @@ const SettingsPage: NextPage = () => {
           }
           
           .printer-type-card:hover {
-            border-color: #f87171;
-            background-color: #fff1f1;
+            border-color: #7dd3fc;
+            background-color: #f0f9ff;
           }
           
           .printer-type-card.active {
-            border-color: #ef4444;
-            background: linear-gradient(to bottom, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+            border-color: #0ea5e9;
+            background: linear-gradient(to bottom, rgba(14, 165, 233, 0.1), rgba(14, 165, 233, 0.05));
           }
           
           .printer-icon {
@@ -356,7 +357,7 @@ const SettingsPage: NextPage = () => {
           }
           
           .printer-icon-thermal {
-            color: #ef4444;
+            color: #0ea5e9;
             animation: pulse 1s ease-in-out;
           }
           
@@ -394,7 +395,7 @@ const SettingsPage: NextPage = () => {
             height: 100%;
             width: 50%;
             animation: loadingBar 2s infinite linear;
-            background: linear-gradient(to right, transparent, #EF4444, transparent);
+            background: linear-gradient(to right, transparent, #0ea5e9, transparent);
           }
 
           @keyframes loadingBar {
@@ -404,7 +405,7 @@ const SettingsPage: NextPage = () => {
         `}</style>
 
         <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             <Tabs defaultValue="printer" className="w-full">
               <div className="flex justify-between items-center mb-6">
                 <TabsList className="bg-white dark:bg-gray-800">
@@ -419,7 +420,7 @@ const SettingsPage: NextPage = () => {
                   <Card className="col-span-3 md:col-span-2">
                     <CardHeader>
                       <CardTitle className="flex items-center">
-                        <FaPrint className="mr-2 text-red-500" />
+                        <FaPrint className="mr-2 text-sky-500" />
                         Pengaturan Printer
                       </CardTitle>
                       <CardDescription>
@@ -437,7 +438,7 @@ const SettingsPage: NextPage = () => {
                             variant="outline" 
                             size="sm"
                             disabled={isDetectingPrinters}
-                            className="bg-gradient-to-r from-red-600 to-orange-500 text-white hover:from-red-700 hover:to-orange-600"
+                            className="bg-gradient-to-r from-sky-500 to-blue-500 text-white hover:from-sky-600 hover:to-blue-600"
                           >
                             {isDetectingPrinters ? (
                               <>
@@ -540,7 +541,7 @@ const SettingsPage: NextPage = () => {
 
                         {printerSettings.printerType === 'thermal' && (
                           <div className="border-t border-gray-200 pt-4 mt-4 space-y-4">
-                            <h3 className="font-medium text-sm text-red-600">Pengaturan Printer Thermal</h3>
+                            <h3 className="font-medium text-sm text-sky-600">Pengaturan Printer Thermal</h3>
                             
                             {/* Model Printer Thermal */}
                             <div className="space-y-2">
@@ -606,13 +607,13 @@ const SettingsPage: NextPage = () => {
                             
                             {/* Thermal Printer List */}
                             <div className="space-y-2 mt-4">
-                              <h3 className="font-medium text-sm text-red-600">Printer Thermal yang Didukung</h3>
+                              <h3 className="font-medium text-sm text-sky-600">Printer Thermal yang Didukung</h3>
                               <div className="border rounded-lg h-40 overflow-y-auto p-2">
                                 <div className="space-y-1">
                                   {thermalPrinterModels.filter(m => m.value !== 'other').map((model) => (
                                     <div 
                                       key={model.value} 
-                                      className={`p-2 text-sm rounded flex justify-between items-center hover:bg-gray-50 cursor-pointer ${printerSettings.thermalModel === model.value ? 'bg-red-50 border border-red-100' : ''}`}
+                                      className={`p-2 text-sm rounded flex justify-between items-center hover:bg-gray-50 cursor-pointer ${printerSettings.thermalModel === model.value ? 'bg-sky-50 border border-sky-100' : ''}`}
                                       onClick={() => updatePrinterSetting('thermalModel', model.value)}
                                     >
                                       <span className="font-medium">{model.label}</span>
@@ -633,7 +634,7 @@ const SettingsPage: NextPage = () => {
                             <Button
                               type="button"
                               variant={printerSettings.connectionType === 'usb' ? 'default' : 'outline'}
-                              className={`flex flex-col items-center justify-center h-20 ${printerSettings.connectionType === 'usb' ? 'bg-gradient-to-r from-red-600 to-orange-500 text-white' : ''}`}
+                              className={`flex flex-col items-center justify-center h-20 ${printerSettings.connectionType === 'usb' ? 'bg-gradient-to-r from-sky-500 to-blue-500 text-white' : ''}`}
                               onClick={() => updatePrinterSetting('connectionType', 'usb')}
                             >
                               <FaUsb className="text-xl mb-1" />
@@ -643,7 +644,7 @@ const SettingsPage: NextPage = () => {
                             <Button
                               type="button"
                               variant={printerSettings.connectionType === 'bluetooth' ? 'default' : 'outline'}
-                              className={`flex flex-col items-center justify-center h-20 ${printerSettings.connectionType === 'bluetooth' ? 'bg-gradient-to-r from-red-600 to-orange-500 text-white' : ''}`}
+                              className={`flex flex-col items-center justify-center h-20 ${printerSettings.connectionType === 'bluetooth' ? 'bg-gradient-to-r from-sky-500 to-blue-500 text-white' : ''}`}
                               onClick={() => updatePrinterSetting('connectionType', 'bluetooth')}
                             >
                               <FaBluetooth className="text-xl mb-1" />
@@ -653,7 +654,7 @@ const SettingsPage: NextPage = () => {
                             <Button
                               type="button"
                               variant={printerSettings.connectionType === 'network' ? 'default' : 'outline'}
-                              className={`flex flex-col items-center justify-center h-20 ${printerSettings.connectionType === 'network' ? 'bg-gradient-to-r from-red-600 to-orange-500 text-white' : ''}`}
+                              className={`flex flex-col items-center justify-center h-20 ${printerSettings.connectionType === 'network' ? 'bg-gradient-to-r from-sky-500 to-blue-500 text-white' : ''}`}
                               onClick={() => updatePrinterSetting('connectionType', 'network')}
                             >
                               <FaNetworkWired className="text-xl mb-1" />
@@ -663,7 +664,7 @@ const SettingsPage: NextPage = () => {
                             <Button
                               type="button"
                               variant={printerSettings.connectionType === 'serial' ? 'default' : 'outline'}
-                              className={`flex flex-col items-center justify-center h-20 ${printerSettings.connectionType === 'serial' ? 'bg-gradient-to-r from-red-600 to-orange-500 text-white' : ''}`}
+                              className={`flex flex-col items-center justify-center h-20 ${printerSettings.connectionType === 'serial' ? 'bg-gradient-to-r from-sky-500 to-blue-500 text-white' : ''}`}
                               onClick={() => updatePrinterSetting('connectionType', 'serial')}
                             >
                               <FaWrench className="text-xl mb-1" />
@@ -751,7 +752,7 @@ const SettingsPage: NextPage = () => {
                         </Button>
                         <Button 
                           onClick={handleSavePrinterSettings}
-                          className="bg-gradient-to-r from-red-600 to-orange-500 text-white"
+                          className="bg-gradient-to-r from-sky-500 to-blue-500 text-white"
                         >
                           <FaSave className="mr-2" /> Simpan
                         </Button>
@@ -768,7 +769,7 @@ const SettingsPage: NextPage = () => {
                   <Card className="col-span-3 md:col-span-2">
                     <CardHeader>
                       <CardTitle className="flex items-center">
-                        <FaReceipt className="mr-2 text-red-500" />
+                        <FaReceipt className="mr-2 text-sky-500" />
                         Editor Struk
                       </CardTitle>
                       <CardDescription>
@@ -932,7 +933,7 @@ const SettingsPage: NextPage = () => {
                       <Button variant="outline" onClick={() => setReceiptSettings(defaultReceiptSettings)}>
                         <FaUndo className="mr-2" /> Atur Ulang
                       </Button>
-                      <Button className="bg-gradient-to-r from-red-600 to-orange-500 text-white">
+                      <Button className="bg-gradient-to-r from-sky-500 to-blue-500 text-white">
                         <FaSave className="mr-2" /> Simpan
                       </Button>
                     </CardFooter>
@@ -942,7 +943,7 @@ const SettingsPage: NextPage = () => {
                   <Card className="md:row-span-2 col-span-3 md:col-span-1">
                     <CardHeader>
                       <CardTitle className="flex items-center text-lg">
-                        <FaCog className="mr-2 text-red-500" />
+                        <FaCog className="mr-2 text-sky-500" />
                         Pengaturan Struk
                       </CardTitle>
                     </CardHeader>
@@ -1079,7 +1080,7 @@ const SettingsPage: NextPage = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm" 
-                                  className={receiptSettings.paperWidth === 58 ? 'bg-red-50 border-red-200' : ''}
+                                  className={receiptSettings.paperWidth === 58 ? 'bg-sky-50 border-sky-200' : ''}
                                   onClick={() => setReceiptSettings(prev => ({ ...prev, paperWidth: 58 }))}
                                 >
                                   58mm
@@ -1087,7 +1088,7 @@ const SettingsPage: NextPage = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm"
-                                  className={receiptSettings.paperWidth === 80 ? 'bg-red-50 border-red-200' : ''}
+                                  className={receiptSettings.paperWidth === 80 ? 'bg-sky-50 border-sky-200' : ''}
                                   onClick={() => setReceiptSettings(prev => ({ ...prev, paperWidth: 80 }))}
                                 >
                                   80mm
@@ -1108,7 +1109,7 @@ const SettingsPage: NextPage = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm" 
-                                  className={`flex-1 ${receiptSettings.headerAlignment === 'left' ? 'bg-red-50 border-red-200' : ''}`}
+                                  className={`flex-1 ${receiptSettings.headerAlignment === 'left' ? 'bg-sky-50 border-sky-200' : ''}`}
                                   onClick={() => setReceiptSettings(prev => ({ ...prev, headerAlignment: 'left' }))}
                                 >
                                   <FaAlignLeft className="mr-1" /> Kiri
@@ -1116,7 +1117,7 @@ const SettingsPage: NextPage = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm"
-                                  className={`flex-1 ${receiptSettings.headerAlignment === 'center' ? 'bg-red-50 border-red-200' : ''}`}
+                                  className={`flex-1 ${receiptSettings.headerAlignment === 'center' ? 'bg-sky-50 border-sky-200' : ''}`}
                                   onClick={() => setReceiptSettings(prev => ({ ...prev, headerAlignment: 'center' }))}
                                 >
                                   <FaAlignCenter className="mr-1" /> Tengah
@@ -1124,7 +1125,7 @@ const SettingsPage: NextPage = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm"
-                                  className={`flex-1 ${receiptSettings.headerAlignment === 'right' ? 'bg-red-50 border-red-200' : ''}`}
+                                  className={`flex-1 ${receiptSettings.headerAlignment === 'right' ? 'bg-sky-50 border-sky-200' : ''}`}
                                   onClick={() => setReceiptSettings(prev => ({ ...prev, headerAlignment: 'right' }))}
                                 >
                                   <FaAlignRight className="mr-1" /> Kanan
@@ -1137,7 +1138,7 @@ const SettingsPage: NextPage = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm" 
-                                  className={`flex-1 ${receiptSettings.footerAlignment === 'left' ? 'bg-red-50 border-red-200' : ''}`}
+                                  className={`flex-1 ${receiptSettings.footerAlignment === 'left' ? 'bg-sky-50 border-sky-200' : ''}`}
                                   onClick={() => setReceiptSettings(prev => ({ ...prev, footerAlignment: 'left' }))}
                                 >
                                   <FaAlignLeft className="mr-1" /> Kiri
@@ -1145,7 +1146,7 @@ const SettingsPage: NextPage = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm"
-                                  className={`flex-1 ${receiptSettings.footerAlignment === 'center' ? 'bg-red-50 border-red-200' : ''}`}
+                                  className={`flex-1 ${receiptSettings.footerAlignment === 'center' ? 'bg-sky-50 border-sky-200' : ''}`}
                                   onClick={() => setReceiptSettings(prev => ({ ...prev, footerAlignment: 'center' }))}
                                 >
                                   <FaAlignCenter className="mr-1" /> Tengah
@@ -1153,7 +1154,7 @@ const SettingsPage: NextPage = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm"
-                                  className={`flex-1 ${receiptSettings.footerAlignment === 'right' ? 'bg-red-50 border-red-200' : ''}`}
+                                  className={`flex-1 ${receiptSettings.footerAlignment === 'right' ? 'bg-sky-50 border-sky-200' : ''}`}
                                   onClick={() => setReceiptSettings(prev => ({ ...prev, footerAlignment: 'right' }))}
                                 >
                                   <FaAlignRight className="mr-1" /> Kanan
@@ -1279,13 +1280,12 @@ const SettingsPage: NextPage = () => {
           </div>
         </div>
       </div>
-
       {/* Modal for printer detection */}
       <Dialog open={showPrinterDetectionModal} onOpenChange={setShowPrinterDetectionModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center">
-              <FaPrint className="mr-2 text-red-500" />
+              <FaPrint className="mr-2 text-sky-500" />
               Deteksi Printer
             </DialogTitle>
             <DialogDescription>
@@ -1300,7 +1300,7 @@ const SettingsPage: NextPage = () => {
               <div className="space-y-4">
                 <div className="connecting-animation h-2 w-full bg-gray-100 rounded"></div>
                 <div className="text-center py-8">
-                  <FaSync className="animate-spin mx-auto text-4xl text-red-500 mb-4" />
+                  <FaSync className="animate-spin mx-auto text-4xl text-sky-500 mb-4" />
                   <p className="text-gray-700 font-medium">Mencari printer yang terhubung...</p>
                   <p className="text-sm text-gray-500 mt-2">Mohon tunggu sebentar</p>
                 </div>
@@ -1360,7 +1360,7 @@ const SettingsPage: NextPage = () => {
               Batal
             </Button>
             {!isDetectingPrinters && (
-              <Button onClick={detectPrinters} className="bg-gradient-to-r from-red-600 to-orange-500 text-white">
+              <Button onClick={detectPrinters} className="bg-gradient-to-r from-sky-500 to-blue-500 text-white">
                 <FaSync className="mr-2" />
                 Scan Ulang
               </Button>
@@ -1368,7 +1368,7 @@ const SettingsPage: NextPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardLayout>
   );
 };
 

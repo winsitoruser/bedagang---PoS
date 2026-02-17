@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -15,14 +15,126 @@ import {
 const ReportsPage: React.FC = () => {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
+      return;
+    }
+
+    if (status === "authenticated") {
+      fetchDashboardData();
     }
   }, [session, status, router]);
 
-  if (status === "loading") {
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/reports/dashboard');
+      
+      if (!response.ok) {
+        console.warn('API failed, using fallback data');
+        // Use fallback data instead of throwing error
+        setDashboardData(getFallbackData());
+        setError(null);
+        return;
+      }
+
+      const data = await response.json();
+      setDashboardData(data.data);
+      setError(null);
+    } catch (err: any) {
+      console.error('Error fetching dashboard data:', err);
+      // Use fallback data on error
+      setDashboardData(getFallbackData());
+      setError(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getFallbackData = () => {
+    return {
+      quickStats: [
+        {
+          label: 'Total Penjualan Bulan Ini',
+          value: 0,
+          valueFormatted: 'Rp 0',
+          change: '+0%',
+          isPositive: true
+        },
+        {
+          label: 'Total Transaksi',
+          value: 0,
+          valueFormatted: '0',
+          change: '+0%',
+          isPositive: true
+        },
+        {
+          label: 'Rata-rata Transaksi',
+          value: 0,
+          valueFormatted: 'Rp 0',
+          change: '+0%',
+          isPositive: true
+        },
+        {
+          label: 'Produk Terjual',
+          value: 0,
+          valueFormatted: '0',
+          change: '+0%',
+          isPositive: true
+        }
+      ],
+      reportCategories: [
+        {
+          title: 'Laporan Penjualan',
+          description: 'Analisis penjualan dan transaksi POS',
+          href: '/pos/reports',
+          stats: {
+            total: 'Rp 0',
+            change: '+0%',
+            trend: 'up'
+          }
+        },
+        {
+          title: 'Laporan Inventory',
+          description: 'Stok, pergerakan, dan nilai inventory',
+          href: '/inventory/reports',
+          stats: {
+            total: '0 Produk',
+            change: '+0%',
+            trend: 'up'
+          }
+        },
+        {
+          title: 'Laporan Keuangan',
+          description: 'Pendapatan, pengeluaran, dan profit',
+          href: '/finance/reports',
+          stats: {
+            total: 'Rp 0',
+            change: '+0%',
+            trend: 'up'
+          }
+        },
+        {
+          title: 'Laporan Pelanggan',
+          description: 'Analisis pelanggan dan CRM',
+          href: '/customers/reports',
+          stats: {
+            total: '0',
+            change: '+0%',
+            trend: 'up'
+          }
+        }
+      ],
+      recentReports: []
+    };
+  };
+
+  if (status === "loading" || loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-screen">
@@ -35,47 +147,54 @@ const ReportsPage: React.FC = () => {
     );
   }
 
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Error: {error}</p>
+            <Button onClick={fetchDashboardData}>Coba Lagi</Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-screen">
+          <p className="text-gray-600">No data available</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Get data from API
+  const quickStats = dashboardData?.quickStats || [];
   const reportCategories = [
     {
-      title: "Laporan Penjualan",
-      description: "Analisis penjualan dan transaksi POS",
+      ...dashboardData?.reportCategories?.[0],
       icon: FaShoppingCart,
-      color: "bg-gradient-to-br from-blue-500 to-blue-600",
-      href: "/pos/reports",
-      stats: { total: "Rp 125 Jt", change: "+12%", trend: "up" }
+      color: "bg-gradient-to-br from-blue-500 to-blue-600"
     },
     {
-      title: "Laporan Inventory",
-      description: "Stok, pergerakan, dan nilai inventory",
+      ...dashboardData?.reportCategories?.[1],
       icon: FaBoxOpen,
-      color: "bg-gradient-to-br from-green-500 to-green-600",
-      href: "/inventory/reports",
-      stats: { total: "342 Produk", change: "+8%", trend: "up" }
+      color: "bg-gradient-to-br from-green-500 to-green-600"
     },
     {
-      title: "Laporan Keuangan",
-      description: "Pendapatan, pengeluaran, dan profit",
+      ...dashboardData?.reportCategories?.[2],
       icon: FaMoneyBillWave,
-      color: "bg-gradient-to-br from-purple-500 to-purple-600",
-      href: "/finance/reports",
-      stats: { total: "Rp 45 Jt", change: "+15%", trend: "up" }
+      color: "bg-gradient-to-br from-purple-500 to-purple-600"
     },
     {
-      title: "Laporan Pelanggan",
-      description: "Analisis pelanggan dan CRM",
+      ...dashboardData?.reportCategories?.[3],
       icon: FaUsers,
-      color: "bg-gradient-to-br from-orange-500 to-orange-600",
-      href: "/customers/reports",
-      stats: { total: "1,234", change: "+5%", trend: "up" }
+      color: "bg-gradient-to-br from-orange-500 to-orange-600"
     }
   ];
-
-  const quickStats = [
-    { label: "Total Penjualan Bulan Ini", value: "Rp 125 Jt", change: "+12%", isPositive: true },
-    { label: "Total Transaksi", value: "2,456", change: "+8%", isPositive: true },
-    { label: "Rata-rata Transaksi", value: "Rp 51K", change: "-2%", isPositive: false },
-    { label: "Produk Terjual", value: "5,678", change: "+15%", isPositive: true },
-  ];
+  const recentReports = dashboardData?.recentReports || [];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -107,12 +226,12 @@ const ReportsPage: React.FC = () => {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {quickStats.map((stat, index) => (
+          {quickStats.map((stat: any, index: number) => (
             <Card key={index}>
               <CardContent className="p-6">
                 <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
                 <div className="flex items-end justify-between">
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stat.valueFormatted}</p>
                   <div className="flex items-center">
                     {stat.isPositive ? (
                       <FaArrowUp className="text-green-600 mr-1" />
@@ -218,12 +337,7 @@ const ReportsPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { name: "Laporan Penjualan Harian", date: "19 Jan 2026", type: "Penjualan", status: "Selesai" },
-                { name: "Laporan Stok Bulanan", date: "18 Jan 2026", type: "Inventory", status: "Selesai" },
-                { name: "Laporan Keuangan", date: "17 Jan 2026", type: "Keuangan", status: "Selesai" },
-                { name: "Analisis Pelanggan", date: "16 Jan 2026", type: "CRM", status: "Selesai" },
-              ].map((report, index) => (
+              {recentReports.map((report: any, index: number) => (
                 <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-sky-100 rounded-lg flex items-center justify-center">

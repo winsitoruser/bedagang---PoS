@@ -55,6 +55,7 @@ export const authOptions: NextAuthOptions = {
             name: user.name,
             role: user.role,
             businessName: user.businessName,
+            tenantId: user.tenant_id,
           };
         } catch (error) {
           console.error('Auth error:', error);
@@ -78,6 +79,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.businessName = user.businessName;
+        token.tenantId = user.tenantId;
       }
       return token;
     },
@@ -86,6 +88,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         session.user.businessName = token.businessName as string;
+        session.user.tenantId = token.tenantId as string;
       }
       return session;
     }

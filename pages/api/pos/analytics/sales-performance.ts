@@ -73,70 +73,6 @@ interface SalesPerformanceData {
   isLive: boolean;
 }
 
-// Mock data untuk fallback
-const mockSalesPerformance = {
-  salesSummary: {
-    totalSales: 21458500,
-    totalTransactions: 842,
-    averageTicketSize: 25485,
-    comparedToLastMonth: 8.3
-  },
-  salesByCategory: [
-    { category: 'Resep', amount: 12458000, percentage: 58.1, growth: 12.5 },
-    { category: 'OTC', amount: 5320500, percentage: 24.8, growth: 8.2 },
-    { category: 'Kosmetik', amount: 2415000, percentage: 11.3, growth: 3.5 },
-    { category: 'Nutrisi', amount: 1265000, percentage: 5.8, growth: 5.8 }
-  ],
-  salesByTime: {
-    hourly: [
-      { hour: '08:00', sales: 954500 },
-      { hour: '09:00', sales: 1458000 },
-      { hour: '10:00', sales: 2150000 },
-      { hour: '11:00', sales: 1854500 },
-      { hour: '12:00', sales: 1215000 },
-      { hour: '13:00', sales: 1125000 },
-      { hour: '14:00', sales: 1745000 },
-      { hour: '15:00', sales: 2350000 },
-      { hour: '16:00', sales: 2845000 },
-      { hour: '17:00', sales: 3125000 },
-      { hour: '18:00', sales: 2235000 },
-      { hour: '19:00', sales: 1401500 }
-    ],
-    daily: [
-      { day: 'Senin', sales: 3245000 },
-      { day: 'Selasa', sales: 2845000 },
-      { day: 'Rabu', sales: 3125000 },
-      { day: 'Kamis', sales: 2945000 },
-      { day: 'Jumat', sales: 3458000 },
-      { day: 'Sabtu', sales: 4125000 },
-      { day: 'Minggu', sales: 1715500 }
-    ]
-  },
-  paymentMethods: [
-    { method: 'Tunai', amount: 5458000, percentage: 25.4 },
-    { method: 'Debit', amount: 8725000, percentage: 40.7 },
-    { method: 'Credit Card', amount: 4125000, percentage: 19.2 },
-    { method: 'QRIS', amount: 3150500, percentage: 14.7 }
-  ],
-  topSellingProducts: [
-    { id: 'PRD001', name: 'Paracetamol 500mg', quantity: 842, revenue: 1684000, growth: 12.5 },
-    { id: 'PRD045', name: 'Amoxicillin 500mg', quantity: 523, revenue: 1569000, growth: 8.7 },
-    { id: 'PRD112', name: 'Vitamin C 1000mg', quantity: 498, revenue: 1245000, growth: 15.3 },
-    { id: 'PRD078', name: 'Antasida Tablet', quantity: 456, revenue: 912000, growth: 5.8 },
-    { id: 'PRD234', name: 'Cetrizine 10mg', quantity: 412, revenue: 824000, growth: 9.2 }
-  ],
-  salesTrend: {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
-    data: [18540000, 19250000, 20120000, 19850000, 21458500]
-  },
-  cashierPerformance: [
-    { cashierId: 'USR001', name: 'Ahmad Rifai', transactions: 312, totalSales: 7854000, avgTicketSize: 25173 },
-    { cashierId: 'USR003', name: 'Siti Aisyah', transactions: 285, totalSales: 7125000, avgTicketSize: 25000 },
-    { cashierId: 'USR007', name: 'Deni Suparman', transactions: 245, totalSales: 6479500, avgTicketSize: 26447 }
-  ],
-  isLive: false
-};
-
 async function getSalesPerformanceFromDatabase(): Promise<SalesPerformanceData> {
   // Ambil data bulan saat ini
   const currentDate = new Date();
@@ -489,9 +425,11 @@ export default async function handler(
       return res.status(200).json(salesData);
     } catch (error) {
       console.error('Error in POS sales performance analytics:', error);
-      
-      // Fallback ke mock data
-      return res.status(200).json(mockSalesPerformance);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch sales performance data',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   }
   

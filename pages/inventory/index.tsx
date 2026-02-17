@@ -596,6 +596,15 @@ const InventoryPage: React.FC = () => {
                       <FaDownload className="mr-2" />
                       Export
                     </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                      onClick={() => router.push('/products/hpp-analysis')}
+                    >
+                      <FaChartLine className="mr-2" />
+                      HPP Analysis
+                    </Button>
                   </div>
                 </div>
                 <div className="relative">
@@ -759,7 +768,9 @@ const InventoryPage: React.FC = () => {
                           <th className="text-left p-4 text-sm font-semibold text-gray-700">Produk</th>
                           <th className="text-left p-4 text-sm font-semibold text-gray-700">SKU</th>
                           <th className="text-left p-4 text-sm font-semibold text-gray-700">Kategori</th>
-                          <th className="text-right p-4 text-sm font-semibold text-gray-700">Harga</th>
+                          <th className="text-right p-4 text-sm font-semibold text-gray-700">HPP</th>
+                          <th className="text-right p-4 text-sm font-semibold text-gray-700">Harga Jual</th>
+                          <th className="text-right p-4 text-sm font-semibold text-gray-700">Margin</th>
                           <th className="text-center p-4 text-sm font-semibold text-gray-700">Stok</th>
                           <th className="text-center p-4 text-sm font-semibold text-gray-700">Level</th>
                           <th className="text-center p-4 text-sm font-semibold text-gray-700">Status</th>
@@ -770,6 +781,17 @@ const InventoryPage: React.FC = () => {
                           const stockPercentage = (product.stock / (product.minStock * 3)) * 100;
                           const isLowStock = product.stock <= product.minStock;
                           const isOutOfStock = product.stock === 0;
+                          
+                          // HPP Calculations
+                          const hpp = product.hpp || 0;
+                          const sellingPrice = product.price || 0;
+                          const marginAmount = sellingPrice - hpp;
+                          const marginPercentage = hpp > 0 ? ((marginAmount / sellingPrice) * 100) : 0;
+                          const minMarginPercentage = product.minMarginPercentage || 20;
+                          
+                          // HPP Status
+                          const hppStatus = marginPercentage >= minMarginPercentage ? 'healthy' : 
+                                           marginPercentage >= 0 ? 'warning' : 'critical';
 
                           return (
                             <tr 
@@ -783,7 +805,7 @@ const InventoryPage: React.FC = () => {
                                     <FaBoxOpen className="text-gray-600" />
                                   </div>
                                   <div>
-                                    <p className="text-sm text-gray-900">{product.name}</p>
+                                    <p className="text-sm font-semibold text-gray-900">{product.name}</p>
                                   </div>
                                 </div>
                               </td>
@@ -794,7 +816,33 @@ const InventoryPage: React.FC = () => {
                                 <p className="text-sm text-gray-900">{product.category}</p>
                               </td>
                               <td className="p-4 text-right">
-                                <p className="text-sm font-semibold text-green-600">{formatCurrency(product.price)}</p>
+                                {hpp > 0 ? (
+                                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(hpp)}</p>
+                                ) : (
+                                  <p className="text-xs text-gray-400">-</p>
+                                )}
+                              </td>
+                              <td className="p-4 text-right">
+                                <p className="text-sm font-semibold text-green-600">{formatCurrency(sellingPrice)}</p>
+                              </td>
+                              <td className="p-4 text-right">
+                                {hpp > 0 ? (
+                                  <div>
+                                    <p className={`text-sm font-semibold ${
+                                      marginAmount >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                      {formatCurrency(marginAmount)}
+                                    </p>
+                                    <p className={`text-xs font-bold ${
+                                      hppStatus === 'healthy' ? 'text-green-600' : 
+                                      hppStatus === 'warning' ? 'text-yellow-600' : 'text-red-600'
+                                    }`}>
+                                      {marginPercentage.toFixed(1)}%
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-400">-</p>
+                                )}
                               </td>
                               <td className="p-4 text-center">
                                 <p className="text-sm font-semibold text-gray-900">{product.stock} unit</p>
@@ -811,12 +859,25 @@ const InventoryPage: React.FC = () => {
                                 </div>
                               </td>
                               <td className="p-4 text-center">
-                                <Badge 
-                                  variant={isOutOfStock ? 'destructive' : isLowStock ? 'secondary' : 'default'}
-                                  className={isOutOfStock ? 'bg-red-100 text-red-700' : isLowStock ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}
-                                >
-                                  {isOutOfStock ? 'Habis' : isLowStock ? 'Rendah' : 'Normal'}
-                                </Badge>
+                                <div className="flex flex-col items-center gap-1">
+                                  <Badge 
+                                    variant={isOutOfStock ? 'destructive' : isLowStock ? 'secondary' : 'default'}
+                                    className={isOutOfStock ? 'bg-red-100 text-red-700' : isLowStock ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}
+                                  >
+                                    {isOutOfStock ? 'Habis' : isLowStock ? 'Rendah' : 'Normal'}
+                                  </Badge>
+                                  {hpp > 0 && (
+                                    <Badge 
+                                      className={`text-xs ${
+                                        hppStatus === 'healthy' ? 'bg-green-100 text-green-700' : 
+                                        hppStatus === 'warning' ? 'bg-yellow-100 text-yellow-700' : 
+                                        'bg-red-100 text-red-700'
+                                      }`}
+                                    >
+                                      {hppStatus === 'healthy' ? '✓ HPP' : hppStatus === 'warning' ? '⚠ HPP' : '✗ HPP'}
+                                    </Badge>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );

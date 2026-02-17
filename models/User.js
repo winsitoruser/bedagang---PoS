@@ -29,9 +29,18 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false
     },
+    tenantId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      field: 'tenant_id',
+      references: {
+        model: 'tenants',
+        key: 'id'
+      }
+    },
     role: {
-      type: DataTypes.ENUM('owner', 'admin', 'manager', 'cashier', 'staff'),
-      defaultValue: 'owner'
+      type: DataTypes.ENUM('super_admin', 'owner', 'admin', 'manager', 'cashier', 'staff'),
+      defaultValue: 'staff'
     },
     isActive: {
       type: DataTypes.BOOLEAN,
@@ -55,6 +64,19 @@ module.exports = (sequelize, DataTypes) => {
     tableName: 'users',
     timestamps: true
   });
+
+  // Add instance method to check if user is super admin
+  User.prototype.isSuperAdmin = function() {
+    return this.role === 'super_admin';
+  };
+
+  User.associate = (models) => {
+    // User belongs to a tenant
+    User.belongsTo(models.Tenant, {
+      foreignKey: 'tenantId',
+      as: 'tenant'
+    });
+  };
 
   return User;
 };
