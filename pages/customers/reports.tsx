@@ -2,8 +2,15 @@ import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import CustomersLayout from '@/components/customers/CustomersLayout';
-import { mockCustomerChartData } from '@/data/mockCustomers';
-import { FaChartBar, FaChartPie, FaChartLine, FaDownload, FaCalendarAlt } from 'react-icons/fa';
+import { FaChartBar, FaChartPie, FaChartLine, FaDownload, FaCalendarAlt, FaInfoCircle } from 'react-icons/fa';
+import {
+  fetchCustomerOverviewReport,
+  fetchTopCustomersReport,
+  fetchCustomerSegmentationReport,
+  fetchCustomerRetentionReport,
+  fetchPurchaseBehaviorReport,
+  generateCustomerReport
+} from '@/lib/adapters/customer-reports-adapter';
 
 // Dynamically import ApexCharts to avoid SSR issues
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
@@ -16,31 +23,108 @@ interface DateRange {
 const CustomerReportsPage: React.FC = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [chartData, setChartData] = useState(mockCustomerChartData);
+  const [chartData, setChartData] = useState<any>({
+    newCustomersChart: { months: [], data: [] },
+    purchaseFrequencyChart: { labels: [], data: [] },
+    spendingDistributionChart: { labels: [], data: [] },
+    membershipDistributionChart: { labels: [], data: [] }
+  });
   const [isFromMock, setIsFromMock] = useState(true);
+  const [period, setPeriod] = useState('month');
   const [dateRange, setDateRange] = useState<DateRange>({
-    startDate: new Date(new Date().setMonth(new Date().getMonth() - 5)), // default to 6 months ago
+    startDate: new Date(new Date().setMonth(new Date().getMonth() - 5)),
     endDate: new Date()
   });
+  const [overview, setOverview] = useState<any>(null);
+  const [topCustomers, setTopCustomers] = useState<any[]>([]);
+  const [segmentation, setSegmentation] = useState<any>(null);
+  const [retention, setRetention] = useState<any>(null);
+  const [purchaseBehavior, setPurchaseBehavior] = useState<any>(null);
 
   useEffect(() => {
-    // In a real implementation, we would fetch chart data from API
-    // For now, we'll use mock data
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Fetch chart data (if there was an API endpoint)
-        // const response = await fetch('/api/customers/chart-data');
-        // if (!response.ok) throw new Error('Failed to fetch chart data');
-        // const data = await response.json();
-        // setChartData(data);
-        
-        // Using mock data for now
-        setChartData(mockCustomerChartData);
-        setIsFromMock(true);
+        // Fetch all customer reports data
+        const [overviewResult, topCustomersResult, segmentationResult, retentionResult, behaviorResult] = await Promise.all([
+          fetchCustomerOverviewReport({ period }),
+          fetchTopCustomersReport({ period, limit: 10 }),
+          fetchCustomerSegmentationReport({ period }),
+          fetchCustomerRetentionReport({ months: 6 }),
+          fetchPurchaseBehaviorReport({ period })
+        ]);
+
+        // Set data from API
+        if (overviewResult.success && overviewResult.data) {
+          setOverview(overviewResult.data);
+          setIsFromMock(overviewResult.isFromMock);
+        }
+
+        if (topCustomersResult.success && topCustomersResult.data) {
+          setTopCustomers(topCustomersResult.data);
+        }
+
+        if (segmentationResult.success && segmentationResult.data) {
+          setSegmentation(segmentationResult.data);
+        }
+
+        if (retentionResult.success && retentionResult.data) {
+          setRetention(retentionResult.data);
+          
+          // Update chart data for new customers from retention data
+          if (retentionResult.data.monthlyRetention) {
+            const months = retentionResult.data.monthlyRetention.map((m: any) => m.monthLabel);
+            const newCustomersData = retentionResult.data.monthlyRetention.map((m: any) => m.newCustomers);
+            
+            setChartData((prev: any) => ({
+              ...prev,
+              newCustomersChart: {
+                months,
+                data: newCustomersData
+              }
+            }));
+          }
+        }
+
+        if (behaviorResult.success && behaviorResult.data) {
+          setPurchaseBehavior(behaviorResult.data);
+          
+          // Update chart data for purchase frequency
+          if (behaviorResult.data.purchaseFrequency) {
+            const labels = behaviorResult.data.purchaseFrequency.map((f: any) => f.frequencyRange);
+            const data = behaviorResult.data.purchaseFrequency.map((f: any) => f.customerCount);
+            
+            setChartData((prev: any) => ({
+              ...prev,
+              purchaseFrequencyChart: { labels, data }
+            }));
+          }
+        }
+
+        // Update spending distribution from segmentation
+        if (segmentationResult.success && segmentationResult.data?.bySpending) {
+          const labels = segmentationResult.data.bySpending.map((s: any) => s.segment);
+          const data = segmentationResult.data.bySpending.map((s: any) => s.customerCount);
+          
+          setChartData((prev: any) => ({
+            ...prev,
+            spendingDistributionChart: { labels, data }
+          }));
+        }
+
+        // Update membership distribution from segmentation
+        if (segmentationResult.success && segmentationResult.data?.byType) {
+          const labels = segmentationResult.data.byType.map((t: any) => t.customerType);
+          const data = segmentationResult.data.byType.map((t: any) => t.customerCount);
+          
+          setChartData((prev: any) => ({
+            ...prev,
+            membershipDistributionChart: { labels, data }
+          }));
+        }
+
       } catch (error) {
-        console.error('Error fetching chart data:', error);
-        setChartData(mockCustomerChartData);
+        console.error('Error fetching customer reports:', error);
         setIsFromMock(true);
       } finally {
         setIsLoading(false);
@@ -48,7 +132,7 @@ const CustomerReportsPage: React.FC = () => {
     };
 
     fetchData();
-  }, [dateRange]);
+  }, [period]);
 
   // New customers chart options
   const newCustomersOptions = {
@@ -266,31 +350,47 @@ const CustomerReportsPage: React.FC = () => {
   const handleDateRangeChange = (range: string) => {
     const endDate = new Date();
     let startDate = new Date();
+    let newPeriod = 'month';
     
     switch (range) {
       case '30days':
         startDate.setDate(startDate.getDate() - 30);
+        newPeriod = 'month';
         break;
       case '90days':
         startDate.setDate(startDate.getDate() - 90);
+        newPeriod = 'month';
         break;
       case '6months':
         startDate.setMonth(startDate.getMonth() - 6);
+        newPeriod = 'month';
         break;
       case '1year':
         startDate.setFullYear(startDate.getFullYear() - 1);
+        newPeriod = 'year';
         break;
       default:
         startDate.setMonth(startDate.getMonth() - 6);
+        newPeriod = 'month';
     }
     
     setDateRange({ startDate, endDate });
+    setPeriod(newPeriod);
   };
 
   // Function to handle export report
-  const handleExportReport = (reportType: string) => {
-    // In a real implementation, this would generate and download a report
-    alert(`Mengunduh laporan ${reportType} (fitur akan segera tersedia)`);
+  const handleExportReport = async (format: 'pdf' | 'excel') => {
+    try {
+      const result = await generateCustomerReport('overview', { period }, format);
+      if (result.success && result.data) {
+        alert(`Laporan berhasil dibuat!\nID: ${result.data.reportId}\nFormat: ${format.toUpperCase()}`);
+      } else {
+        alert('Gagal membuat laporan. Silakan coba lagi.');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Terjadi kesalahan saat export laporan.');
+    }
   };
 
   return (
@@ -305,17 +405,19 @@ const CustomerReportsPage: React.FC = () => {
           <div className="flex flex-wrap gap-2">
             <button 
               onClick={() => handleExportReport('pdf')}
-              className="px-4 py-2 bg-gradient-to-r from-red-600 to-orange-500 text-white rounded-md flex items-center gap-2"
+              className="px-4 py-2 bg-gradient-to-r from-red-600 to-orange-500 text-white rounded-md flex items-center gap-2 hover:from-red-700 hover:to-orange-600"
+              disabled={isLoading}
             >
               <FaDownload />
-              <span>Export PDF</span>
+              <span>{isLoading ? 'Loading...' : 'Export PDF'}</span>
             </button>
             <button 
               onClick={() => handleExportReport('excel')}
               className="px-4 py-2 border border-red-200 bg-white text-red-600 rounded-md flex items-center gap-2 hover:bg-red-50"
+              disabled={isLoading}
             >
               <FaDownload />
-              <span>Export Excel</span>
+              <span>{isLoading ? 'Loading...' : 'Export Excel'}</span>
             </button>
           </div>
         </div>

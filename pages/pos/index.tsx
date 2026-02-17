@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import DashboardLayout from "@/components/layouts/DashboardLayout";
+import BranchSelector from '@/components/settings/BranchSelector';
+import { useBranches } from '@/hooks/useBranches';
 import { 
   ShoppingCart, Receipt, BarChart3, History, Clock, Users, 
   Package, TrendingUp, TrendingDown, DollarSign, Boxes,
@@ -17,6 +19,7 @@ import {
 const PosPage: React.FC = () => {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { branches, selectedBranch, setSelectedBranch } = useBranches();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -25,12 +28,16 @@ const PosPage: React.FC = () => {
   useEffect(() => {
     setMounted(true);
     fetchDashboardData();
-  }, [selectedPeriod]);
+  }, [selectedPeriod, selectedBranch]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/pos/dashboard-stats?period=${selectedPeriod}`);
+      const params = new URLSearchParams({ period: selectedPeriod });
+      if (selectedBranch) {
+        params.append('branchId', selectedBranch.id);
+      }
+      const response = await fetch(`/api/pos/dashboard-stats?${params}`);
       const data = await response.json();
       if (data.success) {
         setDashboardData(data.data);
@@ -169,6 +176,17 @@ const PosPage: React.FC = () => {
             </Link>
           </div>
         </div>
+
+        {/* Branch Selector */}
+        {branches.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm border p-4">
+            <BranchSelector
+              branches={branches}
+              selectedBranch={selectedBranch}
+              onSelect={setSelectedBranch}
+            />
+          </div>
+        )}
 
         {/* Stats Cards - Bootstrap Style */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

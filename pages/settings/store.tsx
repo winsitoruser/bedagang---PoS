@@ -16,6 +16,7 @@ const StoreSettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
+  const [branches, setBranches] = useState([]);
 
   const [storeData, setStoreData] = useState({
     name: '',
@@ -50,6 +51,7 @@ const StoreSettingsPage: React.FC = () => {
   useEffect(() => {
     if (session) {
       fetchStoreSettings();
+      fetchBranches();
     }
   }, [session]);
 
@@ -69,6 +71,18 @@ const StoreSettingsPage: React.FC = () => {
       console.error('Error fetching store settings:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchBranches = async () => {
+    try {
+      const response = await fetch('/api/settings/store/branches');
+      const data = await response.json();
+      if (data.success) {
+        setBranches(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching branches:', error);
     }
   };
 
@@ -175,6 +189,13 @@ const StoreSettingsPage: React.FC = () => {
               >
                 <FaClock className="inline mr-2" />
                 Jam Operasional
+              </button>
+              <button
+                onClick={() => router.push('/settings/store/branches')}
+                className="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm"
+              >
+                <FaStore className="inline mr-2" />
+                Cabang ({branches.length})
               </button>
             </nav>
           </div>

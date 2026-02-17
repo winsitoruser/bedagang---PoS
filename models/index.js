@@ -65,6 +65,11 @@ db.ProductVariant = require('./ProductVariant');
 db.SystemAlert = require('./SystemAlert');
 db.AlertSubscription = require('./AlertSubscription');
 db.AlertAction = require('./AlertAction');
+db.EmployeeSchedule = require('./EmployeeSchedule');
+db.ShiftTemplate = require('./ShiftTemplate');
+db.Store = require('./Store');
+db.Branch = require('./Branch');
+db.StoreSetting = require('./StoreSetting');
 
 // Admin Panel Models
 db.Partner = require('./Partner');
