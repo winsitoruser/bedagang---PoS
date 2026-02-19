@@ -43,7 +43,7 @@ export default async function handler(
       FROM reservations r
       LEFT JOIN tables t ON r.table_id = t.id
       WHERE r.tenant_id = :tenantId
-        AND DATE(r.reservation_date) = DATE(NOW())
+        AND r.reservation_date = CURRENT_DATE
       ORDER BY r.reservation_time ASC
     `, {
       replacements: { tenantId },

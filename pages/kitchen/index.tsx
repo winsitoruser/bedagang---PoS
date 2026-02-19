@@ -9,24 +9,59 @@ import { Button } from '@/components/ui/button';
 import { 
   ChefHat, Clock, CheckCircle, AlertCircle, 
   TrendingUp, Users, Package, BarChart3,
-  ArrowRight, Flame, UtensilsCrossed, ClipboardList
+  ArrowRight, Flame, UtensilsCrossed, ClipboardList,
+  Activity
 } from 'lucide-react';
 
 const KitchenManagementPage: React.FC = () => {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [stats, setStats] = useState({
-    activeOrders: 12,
-    completedToday: 45,
-    avgPrepTime: 18,
-    pendingOrders: 8
+    activeOrders: 0,
+    completedToday: 0,
+    avgPrepTime: 0,
+    pendingOrders: 0,
+    totalRevenue: 0,
+    uniqueCustomers: 0
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
     }
   }, [status, router]);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchDashboardStats();
+      // Refresh every 30 seconds
+      const interval = setInterval(fetchDashboardStats, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [status]);
+
+  const fetchDashboardStats = async () => {
+    try {
+      const response = await fetch('/api/kitchen/dashboard');
+      const result = await response.json();
+      
+      if (result.success) {
+        setStats({
+          activeOrders: result.data.stats.activeOrders,
+          completedToday: result.data.stats.completedOrders,
+          avgPrepTime: 18, // Calculate from API if needed
+          pendingOrders: result.data.stats.activeOrders,
+          totalRevenue: result.data.stats.totalRevenue,
+          uniqueCustomers: result.data.stats.uniqueCustomers
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (status === "loading") {
     return (
@@ -105,6 +140,14 @@ const KitchenManagementPage: React.FC = () => {
       icon: Package,
       color: 'from-orange-500 to-red-600',
       stats: 'Cek stok'
+    },
+    {
+      title: 'Analytics Dapur',
+      description: 'Dashboard analitik performa dapur',
+      href: '/kitchen/analytics',
+      icon: Activity,
+      color: 'from-cyan-500 to-blue-600',
+      stats: 'Lihat insight'
     },
     {
       title: 'Laporan Dapur',

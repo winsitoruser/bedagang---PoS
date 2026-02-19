@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import toast from 'react-hot-toast';
 
 const FnBDashboard: NextPage = () => {
   const router = useRouter();
@@ -47,42 +48,155 @@ const FnBDashboard: NextPage = () => {
   const fetchFnBData = async () => {
     setLoading(true);
     try {
-      // Fetch all data in parallel
+      // Fetch all data in parallel with better error handling
       const [ordersRes, tablesRes, reservationsRes, statsRes] = await Promise.all([
-        fetch('/api/kitchen/orders?status=new,preparing&limit=10'),
-        fetch('/api/tables/status'),
-        fetch('/api/reservations/today'),
-        fetch('/api/dashboard/fnb-stats')
+        fetch('/api/kitchen/orders?status=pending&limit=10').catch(e => ({ ok: false, error: 'Orders API failed', url: '/api/kitchen/orders' })),
+        fetch('/api/tables/status').catch(e => ({ ok: false, error: 'Tables API failed', url: '/api/tables/status' })),
+        fetch('/api/reservations/today').catch(e => ({ ok: false, error: 'Reservations API failed', url: '/api/reservations/today' })),
+        fetch('/api/dashboard/fnb-stats').catch(e => ({ ok: false, error: 'Stats API failed', url: '/api/dashboard/fnb-stats' }))
       ]);
 
-      // Parse responses
-      const ordersData = await ordersRes.json();
-      const tablesData = await tablesRes.json();
-      const reservationsData = await reservationsRes.json();
-      const statsData = await statsRes.json();
+      // Check each response individually
+      let hasError = false;
+      const errors: string[] = [];
 
-      // Set kitchen orders
+      if (!ordersRes.ok) {
+        hasError = true;
+        errors.push(`Orders API: ${(ordersRes as any).error || `HTTP ${ordersRes.status}`}`);
+        console.error('Orders API failed:', ordersRes);
+      }
+
+      if (!tablesRes.ok) {
+        hasError = true;
+        errors.push(`Tables API: ${(tablesRes as any).error || `HTTP ${tablesRes.status}`}`);
+        console.error('Tables API failed:', tablesRes);
+      }
+
+      if (!reservationsRes.ok) {
+        hasError = true;
+        errors.push(`Reservations API: ${(reservationsRes as any).error || `HTTP ${reservationsRes.status}`}`);
+        console.error('Reservations API failed:', reservationsRes);
+      }
+
+      if (!statsRes.ok) {
+        hasError = true;
+        errors.push(`Stats API: ${(statsRes as any).error || `HTTP ${statsRes.status}`}`);
+        console.error('Stats API failed:', statsRes);
+      }
+
+      // Parse responses only if they're OK
+      let ordersData = { success: false, data: [] };
+      let tablesData = { success: false, data: [] };
+      let reservationsData = { success: false, data: [] };
+      let statsData = { success: false, data: null };
+
+      try {
+        if (ordersRes.ok) {
+          const text = await ordersRes.text();
+          // Check if response is HTML (error page)
+          if (text.startsWith('<!DOCTYPE')) {
+            console.error('Orders API returned HTML instead of JSON');
+            ordersData = { success: false, data: [] };
+          } else {
+            ordersData = JSON.parse(text);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse orders data:', e);
+        ordersData = { success: false, data: [] };
+      }
+
+      try {
+        if (tablesRes.ok) {
+          const text = await tablesRes.text();
+          if (text.startsWith('<!DOCTYPE')) {
+            console.error('Tables API returned HTML instead of JSON');
+            tablesData = { success: false, data: [] };
+          } else {
+            tablesData = JSON.parse(text);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse tables data:', e);
+        tablesData = { success: false, data: [] };
+      }
+
+      try {
+        if (reservationsRes.ok) {
+          const text = await reservationsRes.text();
+          if (text.startsWith('<!DOCTYPE')) {
+            console.error('Reservations API returned HTML instead of JSON');
+            reservationsData = { success: false, data: [] };
+          } else {
+            reservationsData = JSON.parse(text);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse reservations data:', e);
+        reservationsData = { success: false, data: [] };
+      }
+
+      try {
+        if (statsRes.ok) {
+          const text = await statsRes.text();
+          if (text.startsWith('<!DOCTYPE')) {
+            console.error('Stats API returned HTML instead of JSON');
+            statsData = { success: false, data: null };
+          } else {
+            statsData = JSON.parse(text);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse stats data:', e);
+        statsData = { success: false, data: null };
+      }
+
+      // Set data even if some APIs failed
       if (ordersData.success) {
         setKitchenOrders(ordersData.data || []);
+      } else {
+        setKitchenOrders([]);
       }
 
-      // Set tables
       if (tablesData.success) {
         setTables(tablesData.data || []);
+      } else {
+        setTables([]);
       }
 
-      // Set reservations
       if (reservationsData.success) {
         setReservations(reservationsData.data || []);
+      } else {
+        setReservations([]);
       }
 
-      // Set stats
       if (statsData.success) {
         setStats(statsData.data);
+      } else {
+        setStats({
+          activeOrders: 0,
+          tablesOccupied: 0,
+          tablesTotal: 0,
+          todayReservations: 0,
+          avgPrepTime: 0,
+          todaySales: 0,
+          completedOrders: 0,
+          salesChange: 0,
+          totalGuests: 0,
+          lowStockItems: 0
+        });
+      }
+
+      // Show error message if any API failed
+      if (hasError) {
+        console.error('API Errors:', errors);
+        toast.error(`Beberapa data gagal dimuat: ${errors.join(', ')}`);
       }
 
     } catch (error) {
       console.error('Error fetching F&B data:', error);
+      toast.error('Gagal memuat data dashboard');
+      
       // Set empty defaults on error
       setKitchenOrders([]);
       setTables([]);
@@ -94,7 +208,10 @@ const FnBDashboard: NextPage = () => {
         todayReservations: 0,
         avgPrepTime: 0,
         todaySales: 0,
-        completedOrders: 0
+        completedOrders: 0,
+        salesChange: 0,
+        totalGuests: 0,
+        lowStockItems: 0
       });
     } finally {
       setLoading(false);

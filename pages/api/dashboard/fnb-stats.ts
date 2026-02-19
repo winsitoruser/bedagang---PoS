@@ -12,15 +12,20 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   try {
     const session = await getServerSession(req, res, authOptions);
 
     if (!session || !session.user) {
-      return res.status(401).json({ message: 'Unauthorized' });
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
     const tenantId = session.user.tenantId;
@@ -32,8 +37,8 @@ export default async function handler(
       SELECT COUNT(*) as count
       FROM kitchen_orders
       WHERE tenant_id = :tenantId
-        AND status IN ('new', 'preparing')
-        AND DATE(created_at) = DATE(NOW())
+        AND status IN ('pending', 'preparing')
+        AND DATE(created_at) = CURRENT_DATE
     `, {
       replacements: { tenantId },
       type: QueryTypes.SELECT
@@ -58,7 +63,7 @@ export default async function handler(
       SELECT COUNT(*) as count
       FROM reservations
       WHERE tenant_id = :tenantId
-        AND DATE(reservation_date) = DATE(NOW())
+        AND reservation_date = CURRENT_DATE
     `, {
       replacements: { tenantId },
       type: QueryTypes.SELECT
@@ -85,7 +90,7 @@ export default async function handler(
       FROM pos_transactions
       WHERE tenant_id = :tenantId
         AND status = 'completed'
-        AND DATE(transaction_date) = DATE(NOW())
+        AND DATE(transaction_date) = CURRENT_DATE
     `, {
       replacements: { tenantId },
       type: QueryTypes.SELECT
@@ -111,7 +116,7 @@ export default async function handler(
       FROM reservations r
       LEFT JOIN tables t ON r.table_id = t.id
       WHERE r.tenant_id = :tenantId
-        AND DATE(r.reservation_date) = DATE(NOW())
+        AND DATE(r.reservation_date) = CURRENT_DATE
         AND r.status IN ('confirmed', 'seated', 'completed')
     `, {
       replacements: { tenantId },
@@ -121,9 +126,9 @@ export default async function handler(
     // 8. Get low stock items count
     const [lowStockResult]: any = await sequelize.query(`
       SELECT COUNT(*) as count
-      FROM kitchen_inventory_items
-      WHERE tenant_id = :tenantId
-        AND status IN ('low', 'critical')
+      FROM kitchen_inventory_items kii
+      WHERE kii.tenant_id = :tenantId
+        AND kii.quantity <= kii.minimum_stock
     `, {
       replacements: { tenantId },
       type: QueryTypes.SELECT
@@ -173,10 +178,12 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('Error fetching F&B stats:', error);
+    
+    // Always return JSON, never HTML
     return res.status(500).json({
       success: false,
       message: 'Internal server error',
-      error: error.message
+      error: error?.message || 'Unknown error'
     });
   }
 }
