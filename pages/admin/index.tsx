@@ -15,7 +15,8 @@ export default function AdminIndex() {
     }
 
     if (session) {
-      if (['ADMIN', 'SUPER_ADMIN'].includes(session.user?.role as string)) {
+      const userRole = (session.user?.role as string)?.toLowerCase();
+      if (['admin', 'super_admin', 'superadmin'].includes(userRole)) {
         router.replace('/admin/dashboard');
       } else {
         router.replace('/admin/login');

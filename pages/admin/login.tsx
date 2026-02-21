@@ -16,7 +16,8 @@ export default function AdminLogin() {
   useEffect(() => {
     if (status === 'authenticated') {
       // Check if user has admin role
-      if (session.user?.role === 'ADMIN' || session.user?.role === 'SUPER_ADMIN') {
+      const userRole = (session.user?.role as string)?.toLowerCase();
+      if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'superadmin') {
         router.push('/admin/dashboard');
       } else {
         setError('Anda tidak memiliki akses ke Admin Panel');

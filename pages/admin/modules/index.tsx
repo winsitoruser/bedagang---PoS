@@ -133,13 +133,13 @@ export default function ModulesManagement() {
                 Manage system modules and their availability
               </p>
             </div>
-            <button
-              onClick={() => alert('Create module feature coming soon')}
+            <Link
+              href="/admin/modules/new"
               className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
             >
               <Plus className="w-5 h-5 mr-2" />
               Create Module
-            </button>
+            </Link>
           </div>
         </div>
 

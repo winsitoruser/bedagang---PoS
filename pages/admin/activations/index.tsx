@@ -58,12 +58,13 @@ export default function ActivationRequests() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login');
+      router.push('/admin/login');
       return;
     }
 
-    if (session && !['ADMIN', 'SUPER_ADMIN'].includes(session.user?.role as string)) {
-      router.push('/');
+    const userRole = (session?.user?.role as string)?.toLowerCase();
+    if (session && !['admin', 'super_admin', 'superadmin'].includes(userRole)) {
+      router.push('/admin/login');
       return;
     }
 
