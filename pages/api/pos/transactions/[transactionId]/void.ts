@@ -196,10 +196,38 @@ export default async function handler(
               suspicious: reason.toLowerCase().includes('error') || 
                          reason.toLowerCase().includes('wrong') ||
                          parseFloat(transaction.total) > 5000000 // Suspicious if > 5M
+          },
+          metadata: {
+            ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+            userAgent: req.headers['user-agent']
           }
         };
 
-        // Trigger webhook to HQ/Management
+        // Use centralized webhook dispatcher
+        try {
+          const dispatchResponse = await fetch(`${req.headers.origin}/api/webhooks/dispatch`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cookie': req.headers.cookie || ''
+            },
+            body: JSON.stringify({
+              eventType: 'transaction_voided',
+              data: webhookPayload,
+              priority: webhookPayload.alert.suspicious ? 'critical' : 'high',
+              targetBranches: 'all',
+              channels: ['webhook', 'dashboard', 'whatsapp']
+            })
+          });
+
+          if (!dispatchResponse.ok) {
+            console.error('Failed to dispatch webhook:', await dispatchResponse.text());
+          }
+        } catch (error) {
+          console.error('Webhook dispatch error:', error);
+        }
+
+        // Fallback: Trigger webhook directly if dispatcher fails
         await webhookService.triggerWebhooks(
           'transaction_voided',
           webhookPayload,
