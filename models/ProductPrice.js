@@ -59,11 +59,26 @@ module.exports = (sequelize, DataTypes) => {
     notes: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    branchId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      field: 'branch_id',
+      comment: 'null means default price for all branches'
     }
   }, {
     tableName: 'product_prices',
     timestamps: true,
-    underscored: true
+    underscored: true,
+    indexes: [
+      {
+        fields: ['product_id', 'branch_id'],
+        unique: true
+      },
+      {
+        fields: ['branch_id']
+      }
+    ]
   });
 
   ProductPrice.associate = (models) => {
@@ -78,6 +93,14 @@ module.exports = (sequelize, DataTypes) => {
       ProductPrice.belongsTo(models.LoyaltyTier, {
         foreignKey: 'tier_id',
         as: 'tier'
+      });
+    }
+    
+    // Belongs to Branch (optional)
+    if (models.Branch) {
+      ProductPrice.belongsTo(models.Branch, {
+        foreignKey: 'branchId',
+        as: 'branch'
       });
     }
   };

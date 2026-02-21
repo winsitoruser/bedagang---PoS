@@ -77,6 +77,16 @@ const FinanceTransaction = sequelize.define('FinanceTransaction', {
     allowNull: true,
     comment: 'Nama kontak'
   },
+  branchId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    field: 'branch_id',
+    references: {
+      model: 'branches',
+      key: 'id'
+    },
+    comment: 'Cabang terkait'
+  },
   attachments: {
     type: DataTypes.JSON,
     allowNull: true,
@@ -141,6 +151,9 @@ const FinanceTransaction = sequelize.define('FinanceTransaction', {
     },
     {
       fields: ['status']
+    },
+    {
+      fields: ['branchId']
     }
   ]
 });
@@ -150,6 +163,11 @@ FinanceTransaction.associate = function(models) {
   FinanceTransaction.belongsTo(models.FinanceAccount, {
     foreignKey: 'accountId',
     as: 'account'
+  });
+  
+  FinanceTransaction.belongsTo(models.Branch, {
+    foreignKey: 'branchId',
+    as: 'branch'
   });
 };
 

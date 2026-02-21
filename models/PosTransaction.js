@@ -40,6 +40,15 @@ const PosTransaction = sequelize.define('PosTransaction', {
       key: 'id'
     }
   },
+  branchId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    field: 'branch_id',
+    references: {
+      model: 'branches',
+      key: 'id'
+    }
+  },
   transactionDate: {
     type: DataTypes.DATE,
     allowNull: false,
@@ -105,6 +114,9 @@ const PosTransaction = sequelize.define('PosTransaction', {
     },
     {
       fields: ['status']
+    },
+    {
+      fields: ['branchId']
     }
   ]
 });
@@ -129,6 +141,11 @@ PosTransaction.associate = (models) => {
   PosTransaction.belongsTo(models.Shift, {
     foreignKey: 'shiftId',
     as: 'shift'
+  });
+  
+  PosTransaction.belongsTo(models.Branch, {
+    foreignKey: 'branchId',
+    as: 'branch'
   });
   
   PosTransaction.belongsTo(models.HeldTransaction, {

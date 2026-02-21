@@ -76,6 +76,15 @@ const Shift = sequelize.define('Shift', {
     allowNull: false,
     defaultValue: 0
   },
+  branchId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    field: 'branch_id',
+    references: {
+      model: 'branches',
+      key: 'id'
+    }
+  },
   status: {
     type: DataTypes.ENUM('open', 'closed'),
     allowNull: false,
@@ -94,8 +103,34 @@ const Shift = sequelize.define('Shift', {
     },
     {
       fields: ['openedBy']
+    },
+    {
+      fields: ['branch_id']
     }
   ]
 });
+
+// Define associations
+Shift.associate = (models) => {
+  Shift.belongsTo(models.Employee, {
+    foreignKey: 'openedBy',
+    as: 'opener'
+  });
+  
+  Shift.belongsTo(models.Employee, {
+    foreignKey: 'closedBy',
+    as: 'closer'
+  });
+  
+  Shift.belongsTo(models.Branch, {
+    foreignKey: 'branchId',
+    as: 'branch'
+  });
+  
+  Shift.hasMany(models.PosTransaction, {
+    foreignKey: 'shiftId',
+    as: 'transactions'
+  });
+};
 
 module.exports = Shift;
