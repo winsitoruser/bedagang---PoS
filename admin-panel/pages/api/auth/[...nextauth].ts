@@ -1,10 +1,10 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
-import path from 'path';
 
-// Import models from parent project
-const getDb = () => require(path.join(__dirname, '../../../../../models'));
+// Import models from local directory
+const db = require('../../../models');
+const { User } = db;
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -20,9 +20,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          const db = getDb();
-          
-          const user = await db.User.findOne({
+          const user = await User.findOne({
             where: { email: credentials.email }
           });
 

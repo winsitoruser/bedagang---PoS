@@ -2,12 +2,15 @@ import '../styles/global.scss';
 import type { AppProps } from 'next/app';
 import { SessionProvider } from 'next-auth/react';
 import { Toaster } from 'react-hot-toast';
+import { BusinessTypeProvider } from '@/contexts/BusinessTypeContext';
 
 function MyApp({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (
     <SessionProvider session={session}>
-      <Component {...pageProps} />
-      <Toaster />
+      <BusinessTypeProvider>
+        <Component {...pageProps} />
+        <Toaster />
+      </BusinessTypeProvider>
     </SessionProvider>
   );
 }

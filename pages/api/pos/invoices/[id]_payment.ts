@@ -77,13 +77,7 @@ export default async function handler(
       invoice = await Promise.race([getInvoicePromise, timeoutPromise]) as any;
       
       if (!invoice) {
-        if (isProduction) {
-          return res.status(404).json({ error: 'Invoice not found' });
-        } else {
-          // Jika development, gunakan mock data
-          apiLogger.info(`Invoice ${id} not found, using mock data for development`);
-          invoice = invoiceAdapter.generateMockInvoiceById(id);
-        }
+        return res.status(404).json({ error: 'Invoice not found' });
       }
       
       // Cek status invoice
@@ -105,16 +99,10 @@ export default async function handler(
         stack: error instanceof Error ? error.stack : undefined
       });
       
-      if (isProduction) {
-        return res.status(500).json({
-          error: 'Failed to fetch invoice',
-          message: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-      
-      // Fallback untuk development
-      apiLogger.info(`Using mock invoice for ${id} due to fetch error`);
-      invoice = invoiceAdapter.generateMockInvoiceById(id);
+      return res.status(500).json({
+        error: 'Failed to fetch invoice',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
 
     // Proses pembayaran menggunakan adapter
@@ -135,34 +123,15 @@ export default async function handler(
       updatedInvoice = await Promise.race([updatePaymentPromise, timeoutPromise]) as any;
       
       if (!updatedInvoice) {
-        if (isProduction) {
-          return res.status(500).json({ error: 'Failed to process payment' });
-        } else {
-          // Mock data untuk development
-          apiLogger.info('Using mock payment processing response for development');
-          updatedInvoice = {
-            ...invoice,
-            status: 'PAID',
-            paidAt: new Date().toISOString(),
-            paymentMethod: paymentData.paymentMethod,
-            isMock: true
-          };
-        }
+        return res.status(500).json({ error: 'Failed to process payment' });
       }
       
       apiLogger.info('Payment processed successfully', {
         invoiceId: id,
-        method: paymentData.paymentMethod,
-        isFromMock: !!updatedInvoice.isMock
+        method: paymentData.paymentMethod
       });
       
-      return res.status(200).json({
-        ...updatedInvoice,
-        meta: {
-          isFromMock: !!updatedInvoice.isMock,
-          paymentProcessed: true
-        }
-      });
+      return res.status(200).json(updatedInvoice);
       
     } catch (error: any) {
       apiLogger.error('Error processing payment:', {
@@ -170,58 +139,9 @@ export default async function handler(
         stack: error instanceof Error ? error.stack : undefined
       });
       
-      if (isProduction) {
-        return res.status(500).json({
-          error: 'Failed to process payment',
-          message: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-      
-      // Fallback mode - simulasi pembayaran untuk testing
-      apiLogger.info('Using mock invoice payment processing');
-      
-      // Mock data untuk invoice yang sudah dibayar
-      const paidMockInvoice = {
-        id: id as string,
-        invoiceNumber: "INV-2025-05-001",
-        prescriptionId: "presc-98765",
-        patientName: "Ahmad Sulaiman",
-        patientId: "P-12345",
-        totalAmount: 125000,
-        dispensingFee: 15000,
-        tax: 14000,
-        grandTotal: 154000,
-        status: "PAID",
-        createdAt: new Date(Date.now() - 3600000).toISOString(), // 1 jam yang lalu
-        paidAt: new Date().toISOString(),
-        paymentMethod: paymentData.paymentMethod,
-        amountPaid: paymentData.amountPaid,
-        items: [
-          {
-            id: "item-001",
-            name: "Paracetamol 500mg",
-            quantity: 10,
-            unitPrice: 5000,
-            subtotal: 50000
-          },
-          {
-            id: "item-002",
-            name: "Amoxicillin 500mg",
-            quantity: 15,
-            unitPrice: 5000,
-            subtotal: 75000
-          }
-        ],
-        isMock: true
-      };
-      
-      return res.status(200).json({
-        ...paidMockInvoice,
-        meta: {
-          isFromMock: true,
-          paymentProcessed: true,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
+      return res.status(500).json({
+        error: 'Failed to process payment',
+        message: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   } catch (error: any) {
@@ -230,30 +150,9 @@ export default async function handler(
       stack: error instanceof Error ? error.stack : undefined
     });
     
-    if (isProduction) {
-      return res.status(500).json({
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-    
-    // Fallback untuk development
-    const paymentData: PaymentData = req.body;
-    const paidMockInvoice = {
-      id: id as string,
-      invoiceNumber: "INV-2025-05-001",
-      status: "PAID",
-      paidAt: new Date().toISOString(),
-      paymentMethod: paymentData.paymentMethod,
-      isMock: true
-    };
-    
-    return res.status(200).json({
-      ...paidMockInvoice,
-      meta: {
-        isFromMock: true,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 }

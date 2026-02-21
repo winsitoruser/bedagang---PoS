@@ -6,37 +6,6 @@ import { logger } from '@/server/monitoring';
 
 const apiLogger = logger.child({ service: 'invoice-detail-api' });
 
-// Mock data untuk invoice detail
-const mockInvoiceData = {
-  id: "inv-123456",
-  invoiceNumber: "INV-2025-05-001",
-  prescriptionId: "presc-98765",
-  patientName: "Ahmad Sulaiman",
-  patientId: "P-12345",
-  totalAmount: 125000,
-  dispensingFee: 15000,
-  tax: 14000,
-  grandTotal: 154000,
-  status: "PENDING",
-  createdAt: new Date().toISOString(),
-  items: [
-    {
-      id: "item-001",
-      name: "Paracetamol 500mg",
-      quantity: 10,
-      unitPrice: 5000,
-      subtotal: 50000
-    },
-    {
-      id: "item-002",
-      name: "Amoxicillin 500mg",
-      quantity: 15,
-      unitPrice: 5000,
-      subtotal: 75000
-    }
-  ]
-};
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -89,50 +58,20 @@ export default async function handler(
       invoice = await Promise.race([getInvoicePromise, timeoutPromise]) as any;
       
       if (!invoice) {
-        // Jika tidak ditemukan, gunakan mock data di development
-        if (!isProduction) {
-          apiLogger.info(`Invoice ${id} not found, using mock data`);
-          invoice = invoiceAdapter.generateMockInvoiceById(id);
-          invoice.isMock = true; // Add this line to fix TypeScript error
-        } else {
-          return res.status(404).json({ error: 'Invoice not found' });
-        }
+        return res.status(404).json({ error: 'Invoice not found' });
       }
       
       // Log successful response
-      apiLogger.info('Successfully retrieved invoice', { 
-        invoiceId: id,
-        isFromMock: !!invoice.isMock
-      });
+      apiLogger.info('Successfully retrieved invoice', { invoiceId: id });
       
-      // Return invoice dengan metadata
-      return res.status(200).json({
-        ...invoice,
-        meta: {
-          isFromMock: !!invoice.isMock
-        }
-      });
+      // Return invoice
+      return res.status(200).json(invoice);
     } catch (error: any) {
       apiLogger.error('Error fetching invoice:', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined
       });
       
-      // Fallback ke mock data di development
-      if (!isProduction) {
-        apiLogger.info('Using mock invoice data as fallback');
-        invoice = invoiceAdapter.generateMockInvoiceById(id) as any;
-        
-        return res.status(200).json({
-          ...invoice,
-          meta: {
-            isFromMock: true,
-            error: error instanceof Error ? error.message : 'Unknown error'
-          }
-        });
-      }
-      
-      // Return error di production
       return res.status(500).json({
         error: 'Failed to fetch invoice',
         message: error instanceof Error ? error.message : 'Unknown error'

@@ -56,8 +56,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     } catch (dbError) {
       console.error('Database error checking shift status:', dbError);
-      // Return mock data for now
-      return getMockShiftResponse(targetUserId, res);
+      logger.error('Failed to check shift status from database', { error: dbError, userId: targetUserId });
+      return error(res, 'Database error - failed to check shift status', 500);
     }
   } catch (err) {
     return handleError(res, err, 'shift status API');
@@ -70,48 +70,6 @@ function handleError(res: NextApiResponse, err: unknown, context: string) {
   const errorObj = err instanceof Error ? err : new Error(String(err));
   logger.error(`Error in ${context}:`, { error: errorObj });
   return error(res, `Failed to check shift status: ${errorMessage}`, 500);
-}
-
-/**
- * Generate a mock shift response for testing
- */
-function getMockShiftResponse(userId: string, res: NextApiResponse) {
-  logger.warn('Using mock shift data', { userId });
-  
-  const mockShift = {
-    id: 'mock-shift-123',
-    startTime: new Date().toISOString(),
-    endTime: null,
-    startingCash: 1000000,
-    endingCash: null,
-    status: 'OPEN',
-    notes: 'Shift pagi',
-    userId: userId,
-    branchId: 'mock-branch-123',
-    tenantId: 'mock-tenant-1',
-    branch: {
-      id: 'mock-branch-123',
-      name: 'Cabang Utama',
-      address: 'Jl. Contoh No. 123',
-      phone: '021-12345678'
-    },
-    user: {
-      id: userId,
-      name: 'Kasir Contoh',
-      email: 'kasir@example.com',
-      role: 'CASHIER'
-    },
-    transactions: 0,
-    totalSales: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  return success(res, {
-    isActive: true,
-    message: 'Active shift found (mock data)',
-    shiftData: mockShift
-  });
 }
 
 export default withApiHandler(handler);

@@ -27,7 +27,20 @@ db.GoodsReceipt = require('./GoodsReceipt');
 db.GoodsReceiptItem = require('./GoodsReceiptItem');
 db.PosTransaction = require('./PosTransaction');
 db.PosTransactionItem = require('./PosTransactionItem');
+db.HeldTransaction = require('./HeldTransaction');
+db.Table = require('./Table');
+db.Reservation = require('./Reservation');
+db.TableSession = require('./TableSession');
+db.ProductCostHistory = require('./ProductCostHistory');
+db.ProductCostComponent = require('./ProductCostComponent');
 db.Shift = require('./Shift');
+
+// Modular System Models
+db.Tenant = require('./Tenant')(sequelize);
+db.BusinessType = require('./BusinessType')(sequelize);
+db.Module = require('./Module')(sequelize);
+db.BusinessTypeModule = require('./BusinessTypeModule')(sequelize);
+db.TenantModule = require('./TenantModule')(sequelize);
 db.ShiftHandover = require('./ShiftHandover');
 db.CustomerLoyalty = require('./CustomerLoyalty');
 db.LoyaltyProgram = require('./LoyaltyProgram');
@@ -54,6 +67,23 @@ db.AlertSubscription = require('./AlertSubscription');
 db.AlertAction = require('./AlertAction');
 db.EmployeeSchedule = require('./EmployeeSchedule');
 db.ShiftTemplate = require('./ShiftTemplate');
+db.Store = require('./Store');
+db.Branch = require('./Branch');
+db.StoreSetting = require('./StoreSetting');
+
+// Kitchen Models
+db.KitchenOrder = require('./KitchenOrder');
+db.KitchenOrderItem = require('./KitchenOrderItem');
+db.KitchenInventoryItem = require('./KitchenInventoryItem');
+db.KitchenInventoryTransaction = require('./KitchenInventoryTransaction');
+
+// Admin Panel Models
+db.Partner = require('./Partner');
+db.SubscriptionPackage = require('./SubscriptionPackage');
+db.PartnerSubscription = require('./PartnerSubscription');
+db.PartnerOutlet = require('./PartnerOutlet');
+db.PartnerUser = require('./PartnerUser');
+db.ActivationRequest = require('./ActivationRequest');
 
 // Load associations if they exist
 // Associations are defined in the models themselves or in separate files

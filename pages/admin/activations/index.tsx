@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
+import AdminLayout from '@/components/admin/AdminLayout';
 import {
   FileCheck,
   Search,
@@ -57,12 +58,13 @@ export default function ActivationRequests() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login');
+      router.push('/admin/login');
       return;
     }
 
-    if (session && !['ADMIN', 'SUPER_ADMIN'].includes(session.user?.role as string)) {
-      router.push('/');
+    const userRole = (session?.user?.role as string)?.toLowerCase();
+    if (session && !['admin', 'super_admin', 'superadmin'].includes(userRole)) {
+      router.push('/admin/login');
       return;
     }
 
@@ -189,12 +191,14 @@ export default function ActivationRequests() {
 
   if (loading && requests.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading activation requests...</p>
+      <AdminLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading activation requests...</p>
+          </div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
@@ -204,33 +208,26 @@ export default function ActivationRequests() {
         <title>Activation Requests - Admin Bedagang</title>
       </Head>
 
-      <div className="min-h-screen bg-gray-50">
+      <AdminLayout>
         {/* Header */}
-        <div className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Link href="/admin" className="text-gray-400 hover:text-gray-600">
-                  <ChevronLeft className="h-6 w-6" />
-                </Link>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Activation Requests</h1>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Review and approve partner activation requests
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-                  {requests.filter(r => r.status === 'pending').length} Pending
-                </span>
-              </div>
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Activation Requests</h1>
+              <p className="mt-2 text-sm text-gray-600">
+                Review and approve partner activation requests
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                {requests.filter(r => r.status === 'pending').length} Pending
+              </span>
             </div>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div>
           {/* Status Filter */}
           <div className="bg-white rounded-lg shadow p-4 mb-6">
             <div className="flex items-center space-x-4">
@@ -357,7 +354,6 @@ export default function ActivationRequests() {
             )}
           </div>
         </div>
-      </div>
 
       {/* Approval Modal */}
       {showApprovalModal && selectedRequest && (
@@ -501,6 +497,7 @@ export default function ActivationRequests() {
           </div>
         </div>
       )}
+      </AdminLayout>
     </>
   );
 }

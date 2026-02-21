@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
+import AdminLayout from '@/components/admin/AdminLayout';
 import {
   Users,
   Search,
@@ -59,12 +60,13 @@ export default function PartnersManagement() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login');
+      router.push('/admin/login');
       return;
     }
 
-    if (session && !['ADMIN', 'SUPER_ADMIN'].includes(session.user?.role as string)) {
-      router.push('/');
+    const userRole = (session?.user?.role as string)?.toLowerCase();
+    if (session && !['admin', 'super_admin', 'superadmin'].includes(userRole)) {
+      router.push('/admin/login');
       return;
     }
 
@@ -149,12 +151,14 @@ export default function PartnersManagement() {
 
   if (loading && partners.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading partners...</p>
+      <AdminLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading partners...</p>
+          </div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
@@ -164,35 +168,28 @@ export default function PartnersManagement() {
         <title>Partners Management - Admin Bedagang</title>
       </Head>
 
-      <div className="min-h-screen bg-gray-50">
+      <AdminLayout>
         {/* Header */}
-        <div className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Link href="/admin" className="text-gray-400 hover:text-gray-600">
-                  <ChevronLeft className="h-6 w-6" />
-                </Link>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Partners Management</h1>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Manage all partners and their subscriptions
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => router.push('/admin/partners/new')}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Add Partner
-              </button>
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Partners Management</h1>
+              <p className="mt-2 text-sm text-gray-600">
+                Manage all partners and their subscriptions
+              </p>
             </div>
+            <button
+              onClick={() => router.push('/admin/partners/new')}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Add Partner
+            </button>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div>
           {/* Filters */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -419,7 +416,7 @@ export default function PartnersManagement() {
             </div>
           </div>
         </div>
-      </div>
+      </AdminLayout>
     </>
   );
 }

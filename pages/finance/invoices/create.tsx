@@ -1,7 +1,7 @@
 import { NextPage } from "next";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import FinanceLayout from "@/components/layouts/finance-layout";
+import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -197,27 +197,45 @@ const CreateInvoicePage: NextPage = () => {
     setLoading(true);
     
     try {
+      // Transform data to match backend API structure
+      const payload = {
+        type: 'supplier',
+        supplierName: formData.supplierName,
+        invoiceDate: formData.invoiceDate,
+        dueDate: formData.dueDate,
+        items: formData.items.map(item => ({
+          product: item.productName,
+          quantity: item.quantity,
+          price: item.unitPrice
+        })),
+        notes: formData.notes,
+        purchaseOrderNumber: formData.purchaseOrder || null
+      };
+
       const response = await fetch('/api/finance/invoices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
-      if (response.ok) {
+      const data = await response.json();
+
+      if (response.ok && data.success) {
         toast({
           title: "Berhasil",
-          description: "Faktur berhasil dibuat",
+          description: `Faktur ${data.data.id} berhasil dibuat`,
         });
         router.push('/finance/invoices');
       } else {
-        throw new Error('Failed to create invoice');
+        throw new Error(data.error || 'Failed to create invoice');
       }
     } catch (error) {
+      console.error('Create invoice error:', error);
       toast({
         title: "Error",
-        description: "Gagal membuat faktur. Silakan coba lagi.",
+        description: error instanceof Error ? error.message : "Gagal membuat faktur. Silakan coba lagi.",
         variant: "destructive",
       });
     } finally {
@@ -226,7 +244,7 @@ const CreateInvoicePage: NextPage = () => {
   };
 
   return (
-    <FinanceLayout>
+    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -234,14 +252,14 @@ const CreateInvoicePage: NextPage = () => {
             <Button
               variant="ghost"
               onClick={() => router.back()}
-              className="text-orange-600 hover:text-orange-800 hover:bg-orange-50"
+              className="text-sky-600 hover:text-sky-800 hover:bg-sky-50"
             >
               <FaArrowLeft className="mr-2 h-4 w-4" />
               Kembali
             </Button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-                <FaFileInvoiceDollar className="mr-3 text-orange-600" />
+                <FaFileInvoiceDollar className="mr-3 text-sky-600" />
                 Buat Faktur Baru
               </h1>
               <p className="text-gray-600 mt-1">
@@ -253,9 +271,9 @@ const CreateInvoicePage: NextPage = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Supplier Information */}
-          <Card className="border-orange-100">
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50">
-              <CardTitle className="text-orange-800 flex items-center">
+          <Card className="border-sky-100">
+            <CardHeader className="bg-gradient-to-r from-sky-50 to-blue-50">
+              <CardTitle className="text-sky-800 flex items-center">
                 <FaBuilding className="mr-2" />
                 Informasi Supplier
               </CardTitle>
@@ -313,9 +331,9 @@ const CreateInvoicePage: NextPage = () => {
           </Card>
 
           {/* Invoice Details */}
-          <Card className="border-orange-100">
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50">
-              <CardTitle className="text-orange-800 flex items-center">
+          <Card className="border-sky-100">
+            <CardHeader className="bg-gradient-to-r from-sky-50 to-blue-50">
+              <CardTitle className="text-sky-800 flex items-center">
                 <FaCalendarAlt className="mr-2" />
                 Detail Faktur
               </CardTitle>
@@ -376,9 +394,9 @@ const CreateInvoicePage: NextPage = () => {
           </Card>
 
           {/* Invoice Items */}
-          <Card className="border-orange-100">
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50">
-              <CardTitle className="text-orange-800 flex items-center">
+          <Card className="border-sky-100">
+            <CardHeader className="bg-gradient-to-r from-sky-50 to-blue-50">
+              <CardTitle className="text-sky-800 flex items-center">
                 <FaShoppingCart className="mr-2" />
                 Item Faktur
               </CardTitle>
@@ -420,7 +438,7 @@ const CreateInvoicePage: NextPage = () => {
                   <Button
                     type="button"
                     onClick={addItem}
-                    className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
+                    className="w-full bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600"
                   >
                     <FaPlus className="mr-2 h-4 w-4" />
                     Tambah
@@ -467,9 +485,9 @@ const CreateInvoicePage: NextPage = () => {
           </Card>
 
           {/* Totals */}
-          <Card className="border-orange-100">
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50">
-              <CardTitle className="text-orange-800 flex items-center">
+          <Card className="border-sky-100">
+            <CardHeader className="bg-gradient-to-r from-sky-50 to-blue-50">
+              <CardTitle className="text-sky-800 flex items-center">
                 <FaDollarSign className="mr-2" />
                 Total Faktur
               </CardTitle>
@@ -516,7 +534,7 @@ const CreateInvoicePage: NextPage = () => {
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-2">
                   <span>Total:</span>
-                  <span className="text-orange-600">{formatCurrency(formData.totalAmount)}</span>
+                  <span className="text-sky-600">{formatCurrency(formData.totalAmount)}</span>
                 </div>
               </div>
             </CardContent>
@@ -535,7 +553,7 @@ const CreateInvoicePage: NextPage = () => {
             <Button
               type="submit"
               disabled={loading || formData.items.length === 0}
-              className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
+              className="bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600"
             >
               <FaSave className="mr-2 h-4 w-4" />
               {loading ? "Menyimpan..." : "Simpan Faktur"}
@@ -543,7 +561,7 @@ const CreateInvoicePage: NextPage = () => {
           </div>
         </form>
       </div>
-    </FinanceLayout>
+    </DashboardLayout>
   );
 };
 

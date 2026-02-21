@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const sequelize = require('../lib/sequelize');
 
 const Store = sequelize.define('Store', {
   id: {
@@ -73,5 +73,19 @@ const Store = sequelize.define('Store', {
   tableName: 'stores',
   timestamps: true
 });
+
+Store.associate = function(models) {
+  // Store has many Branches
+  Store.hasMany(models.Branch, {
+    foreignKey: 'storeId',
+    as: 'branches'
+  });
+
+  // Store has many Store Settings
+  Store.hasMany(models.StoreSetting, {
+    foreignKey: 'storeId',
+    as: 'storeSettings'
+  });
+};
 
 module.exports = Store;

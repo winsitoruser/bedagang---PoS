@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+import BranchSelector from '@/components/settings/BranchSelector';
+import { useBranches } from '@/hooks/useBranches';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +24,7 @@ import {
 const InventoryPage: React.FC = () => {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { branches, selectedBranch, setSelectedBranch } = useBranches();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [showProductModal, setShowProductModal] = useState(false);
@@ -39,7 +42,11 @@ const InventoryPage: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/inventory/stats');
+      const params = new URLSearchParams();
+      if (selectedBranch) {
+        params.append('branchId', selectedBranch.id);
+      }
+      const response = await fetch(`/api/inventory/stats?${params}`);
       const data = await response.json();
       if (data.success) {
         setStats(data.data);
@@ -59,6 +66,10 @@ const InventoryPage: React.FC = () => {
       
       if (searchQuery) {
         params.append('search', searchQuery);
+      }
+
+      if (selectedBranch) {
+        params.append('branchId', selectedBranch.id);
       }
 
       const response = await fetch(`/api/products?${params}`);
@@ -105,7 +116,7 @@ const InventoryPage: React.FC = () => {
     }
   }, [session, status, router]);
 
-  // Fetch stats on mount
+  // Fetch stats on mount and when branch changes
   useEffect(() => {
     fetchStats();
     fetchActivities();
@@ -117,12 +128,12 @@ const InventoryPage: React.FC = () => {
     }, 30000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedBranch]);
 
-  // Fetch products when page or search changes
+  // Fetch products when page, search, or branch changes
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, itemsPerPage, searchQuery]);
+  }, [currentPage, itemsPerPage, searchQuery, selectedBranch]);
 
   // Use real stats from API or fallback to loading state
   const statsData = stats || {
@@ -236,6 +247,17 @@ const InventoryPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Branch Selector */}
+        {branches.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm border p-4">
+            <BranchSelector
+              branches={branches}
+              selectedBranch={selectedBranch}
+              onSelect={setSelectedBranch}
+            />
+          </div>
+        )}
 
         {/* Marquee Ticker - Stock Alerts & Updates */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -413,7 +435,15 @@ const InventoryPage: React.FC = () => {
         {/* Quick Actions - Enhanced */}
         <Card className="shadow-lg border-0">
           <CardHeader>
-            <CardTitle className="text-xl">Aksi Cepat</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl">Aksi Cepat</CardTitle>
+              <Link href="/inventory/master">
+                <Button className="h-8 px-4 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white text-sm">
+                  <FaLayerGroup className="mr-2 text-xs" />
+                  Master Inventory
+                </Button>
+              </Link>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -596,6 +626,15 @@ const InventoryPage: React.FC = () => {
                       <FaDownload className="mr-2" />
                       Export
                     </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                      onClick={() => router.push('/products/hpp-analysis')}
+                    >
+                      <FaChartLine className="mr-2" />
+                      HPP Analysis
+                    </Button>
                   </div>
                 </div>
                 <div className="relative">
@@ -759,7 +798,9 @@ const InventoryPage: React.FC = () => {
                           <th className="text-left p-4 text-sm font-semibold text-gray-700">Produk</th>
                           <th className="text-left p-4 text-sm font-semibold text-gray-700">SKU</th>
                           <th className="text-left p-4 text-sm font-semibold text-gray-700">Kategori</th>
-                          <th className="text-right p-4 text-sm font-semibold text-gray-700">Harga</th>
+                          <th className="text-right p-4 text-sm font-semibold text-gray-700">HPP</th>
+                          <th className="text-right p-4 text-sm font-semibold text-gray-700">Harga Jual</th>
+                          <th className="text-right p-4 text-sm font-semibold text-gray-700">Margin</th>
                           <th className="text-center p-4 text-sm font-semibold text-gray-700">Stok</th>
                           <th className="text-center p-4 text-sm font-semibold text-gray-700">Level</th>
                           <th className="text-center p-4 text-sm font-semibold text-gray-700">Status</th>
@@ -770,6 +811,17 @@ const InventoryPage: React.FC = () => {
                           const stockPercentage = (product.stock / (product.minStock * 3)) * 100;
                           const isLowStock = product.stock <= product.minStock;
                           const isOutOfStock = product.stock === 0;
+                          
+                          // HPP Calculations
+                          const hpp = product.hpp || 0;
+                          const sellingPrice = product.price || 0;
+                          const marginAmount = sellingPrice - hpp;
+                          const marginPercentage = hpp > 0 ? ((marginAmount / sellingPrice) * 100) : 0;
+                          const minMarginPercentage = product.minMarginPercentage || 20;
+                          
+                          // HPP Status
+                          const hppStatus = marginPercentage >= minMarginPercentage ? 'healthy' : 
+                                           marginPercentage >= 0 ? 'warning' : 'critical';
 
                           return (
                             <tr 
@@ -783,7 +835,7 @@ const InventoryPage: React.FC = () => {
                                     <FaBoxOpen className="text-gray-600" />
                                   </div>
                                   <div>
-                                    <p className="text-sm text-gray-900">{product.name}</p>
+                                    <p className="text-sm font-semibold text-gray-900">{product.name}</p>
                                   </div>
                                 </div>
                               </td>
@@ -794,7 +846,33 @@ const InventoryPage: React.FC = () => {
                                 <p className="text-sm text-gray-900">{product.category}</p>
                               </td>
                               <td className="p-4 text-right">
-                                <p className="text-sm font-semibold text-green-600">{formatCurrency(product.price)}</p>
+                                {hpp > 0 ? (
+                                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(hpp)}</p>
+                                ) : (
+                                  <p className="text-xs text-gray-400">-</p>
+                                )}
+                              </td>
+                              <td className="p-4 text-right">
+                                <p className="text-sm font-semibold text-green-600">{formatCurrency(sellingPrice)}</p>
+                              </td>
+                              <td className="p-4 text-right">
+                                {hpp > 0 ? (
+                                  <div>
+                                    <p className={`text-sm font-semibold ${
+                                      marginAmount >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                      {formatCurrency(marginAmount)}
+                                    </p>
+                                    <p className={`text-xs font-bold ${
+                                      hppStatus === 'healthy' ? 'text-green-600' : 
+                                      hppStatus === 'warning' ? 'text-yellow-600' : 'text-red-600'
+                                    }`}>
+                                      {marginPercentage.toFixed(1)}%
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-400">-</p>
+                                )}
                               </td>
                               <td className="p-4 text-center">
                                 <p className="text-sm font-semibold text-gray-900">{product.stock} unit</p>
@@ -811,12 +889,25 @@ const InventoryPage: React.FC = () => {
                                 </div>
                               </td>
                               <td className="p-4 text-center">
-                                <Badge 
-                                  variant={isOutOfStock ? 'destructive' : isLowStock ? 'secondary' : 'default'}
-                                  className={isOutOfStock ? 'bg-red-100 text-red-700' : isLowStock ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}
-                                >
-                                  {isOutOfStock ? 'Habis' : isLowStock ? 'Rendah' : 'Normal'}
-                                </Badge>
+                                <div className="flex flex-col items-center gap-1">
+                                  <Badge 
+                                    variant={isOutOfStock ? 'destructive' : isLowStock ? 'secondary' : 'default'}
+                                    className={isOutOfStock ? 'bg-red-100 text-red-700' : isLowStock ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}
+                                  >
+                                    {isOutOfStock ? 'Habis' : isLowStock ? 'Rendah' : 'Normal'}
+                                  </Badge>
+                                  {hpp > 0 && (
+                                    <Badge 
+                                      className={`text-xs ${
+                                        hppStatus === 'healthy' ? 'bg-green-100 text-green-700' : 
+                                        hppStatus === 'warning' ? 'bg-yellow-100 text-yellow-700' : 
+                                        'bg-red-100 text-red-700'
+                                      }`}
+                                    >
+                                      {hppStatus === 'healthy' ? '✓ HPP' : hppStatus === 'warning' ? '⚠ HPP' : '✗ HPP'}
+                                    </Badge>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );

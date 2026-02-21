@@ -6,20 +6,6 @@ import { logger } from '@/server/monitoring';
 
 const apiLogger = logger.child({ service: 'prescription-invoice-api' });
 
-// Mock data untuk harga obat
-const mockDrugPrices = {
-  'DRUG001': { price: 5000, name: 'Paracetamol 500mg' },
-  'DRUG002': { price: 15000, name: 'Amoxicillin 500mg' },
-  'DRUG003': { price: 20000, name: 'Omeprazole 20mg' },
-  'DRUG004': { price: 8000, name: 'Cetirizine 10mg' },
-  'DRUG005': { price: 12000, name: 'Amlodipine 5mg' },
-  'DRUG006': { price: 14000, name: 'Metformin 500mg' },
-  'DRUG007': { price: 7000, name: 'Ibuprofen 400mg' },
-  'DRUG008': { price: 3000, name: 'Vitamin C 500mg' },
-  'DRUG009': { price: 25000, name: 'Paracetamol Syrup 120mg/5ml' },
-  'DRUG010': { price: 10000, name: 'Ambroxol 30mg' }
-};
-
 // Fee peracikan resep
 const PRESCRIPTION_FEE = 10000;
 

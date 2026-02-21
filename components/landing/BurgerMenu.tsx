@@ -87,6 +87,18 @@ const BurgerMenu: React.FC = () => {
                         <span className="font-medium">Dashboard</span>
                       </motion.button>
 
+                      {/* Admin Panel Link - Only for ADMIN and SUPER_ADMIN */}
+                      {(session.user?.role === 'ADMIN' || session.user?.role === 'SUPER_ADMIN') && (
+                        <motion.button
+                          onClick={() => handleNavigation('/admin')}
+                          className="w-full flex items-center space-x-3 text-white hover:bg-white/10 rounded-lg p-3 transition-colors border border-white/30"
+                          whileHover={{ x: 5 }}
+                        >
+                          <LayoutDashboard className="w-5 h-5" />
+                          <span className="font-medium">Admin Panel</span>
+                        </motion.button>
+                      )}
+
                       <motion.button
                         onClick={handleLogout}
                         className="w-full flex items-center space-x-3 text-white hover:bg-white/10 rounded-lg p-3 transition-colors"
