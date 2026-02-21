@@ -58,16 +58,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Paid amount must be greater than or equal to total' });
     }
 
-    // Generate transaction number
+    // Generate transaction number with branch prefix
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
-    const count = await PosTransaction.count({
-      where: sequelize.where(
-        sequelize.fn('DATE', sequelize.col('transactionDate')),
-        today.toISOString().split('T')[0]
-      )
-    });
-    const transactionNumber = `TRX-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+    
+    // Get branch info for prefix
+    const branchId = (session.user as any)?.branchId;
+    const branchCode = (session.user as any)?.branchCode || 'GEN';
+    
+    // Count transactions for this branch today
+    const whereClause: any = {
+      [sequelize.Op.and]: [
+        sequelize.where(
+          sequelize.fn('DATE', sequelize.col('transactionDate')),
+          today.toISOString().split('T')[0]
+        )
+      ]
+    };
+    
+    if (branchId) {
+      whereClause.branchId = branchId;
+    }
+    
+    const count = await PosTransaction.count({ where: whereClause });
+    const transactionNumber = `${branchCode}-${dateStr}-${String(count + 1).padStart(4, '0')}`;
 
     // Get cashier ID from session
     const cashierId = (session.user as any)?.employeeId || (session.user as any)?.id;
@@ -79,6 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       customerId: customerId || null,
       customerName: customerName || 'Walk-in Customer',
       cashierId,
+      branchId: branchId || null,
       transactionDate: new Date(),
       subtotal: subtotal || 0,
       discount: discount || 0,

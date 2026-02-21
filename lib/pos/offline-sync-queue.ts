@@ -451,7 +451,9 @@ export class OfflineSyncQueue {
       _syncMetadata: {
         clientTimestamp: Date.now(),
         operationType,
-        isOfflineSync: true
+        isOfflineSync: true,
+        branchId: this.getCurrentBranchId(),
+        branchCode: this.getCurrentBranchCode()
       }
     };
     
@@ -773,6 +775,67 @@ export class OfflineSyncQueue {
         logger.error(`[${SERVICE_NAME}] Error in conflict callback`, { error });
       }
     });
+  }
+
+  /**
+   * Get current branch ID from session storage
+   */
+  private getCurrentBranchId(): string | null {
+    if (typeof window === 'undefined') return null;
+    
+    try {
+      const sessionData = sessionStorage.getItem('next-auth.session-token');
+      if (sessionData) {
+        // Try to get from current session
+        const session = JSON.parse(sessionData);
+        return session.user?.branchId || null;
+      }
+    } catch (error) {
+      logger.debug(`[${SERVICE_NAME}] Could not get branch ID from session`, { error });
+    }
+    
+    // Fallback to localStorage
+    try {
+      const branchData = localStorage.getItem('current-branch');
+      if (branchData) {
+        const branch = JSON.parse(branchData);
+        return branch.id || null;
+      }
+    } catch (error) {
+      logger.debug(`[${SERVICE_NAME}] Could not get branch ID from localStorage`, { error });
+    }
+    
+    return null;
+  }
+
+  /**
+   * Get current branch code from session storage
+   */
+  private getCurrentBranchCode(): string | null {
+    if (typeof window === 'undefined') return null;
+    
+    try {
+      const sessionData = sessionStorage.getItem('next-auth.session-token');
+      if (sessionData) {
+        const session = JSON.parse(sessionData);
+        return session.user?.branchCode || null;
+      }
+    } catch (error) {
+      logger.debug(`[${SERVICE_NAME}] Could not get branch code from session`, { error });
+    }
+    
+    // Fallback to localStorage
+    try {
+      const branchData = localStorage.getItem('current-branch');
+      if (branchData) {
+        const branch = JSON.parse(branchData);
+        return branch.code || null;
+      }
+    } catch (error) {
+      logger.debug(`[${SERVICE_NAME}] Could not get branch code from localStorage`, { error });
+    }
+    
+    return null;
   }
 }
 

@@ -23,8 +23,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     try {
+      // Build where clause for multi-tenant support
+      const whereClause: any = { customerId };
+      
+      // Add tenant filtering for non-super admin
+      if (session.user.role !== 'super_admin') {
+        whereClause.tenantId = session.user.tenantId;
+      }
+
       const customerLoyalty = await CustomerLoyalty.findOne({
-        where: { customerId },
+        where: whereClause,
         include: [
           {
             model: Customer,
