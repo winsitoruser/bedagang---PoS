@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { useSession } from 'next-auth/react';
 import { useState, useEffect, useCallback } from 'react';
 
@@ -104,7 +105,9 @@ export const PermissionGate: React.FC<{
     return null;
   }
 
-  return hasPermission(resource, action, context) ? <>{children}</> : <>{fallback}</>;
+  return hasPermission(resource, action, context) 
+    ? React.createElement(React.Fragment, null, children)
+    : React.createElement(React.Fragment, null, fallback || null);
 };
 
 /**

@@ -7,6 +7,9 @@ const PosTransactionItem = require('../../../../models/PosTransactionItem');
 const Employee = require('../../../../models/Employee');
 const Customer = require('../../../../models/Customer');
 const Product = require('../../../../models/Product');
+const KitchenOrder = require('../../../../models/KitchenOrder');
+const KitchenOrderItem = require('../../../../models/KitchenOrderItem');
+const Table = require('../../../../models/Table');
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
@@ -20,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       case 'GET':
         return await getTransactions(req, res);
       case 'POST':
-        return await createTransaction(req, res);
+        return await createTransaction(req, res, session);
       default:
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -119,7 +122,7 @@ async function getTransactions(req: NextApiRequest, res: NextApiResponse) {
 }
 
 // POST /api/pos/transactions
-async function createTransaction(req: NextApiRequest, res: NextApiResponse) {
+async function createTransaction(req: NextApiRequest, res: NextApiResponse, session: any) {
   const {
     shiftId,
     customerId,
@@ -130,12 +133,21 @@ async function createTransaction(req: NextApiRequest, res: NextApiResponse) {
     paidAmount,
     discount = 0,
     tax = 0,
-    notes
+    notes,
+    tableNumber,
+    orderType = 'dine-in',
+    sendToKitchen = true
   } = req.body;
 
   if (!cashierId || !items || items.length === 0 || !paymentMethod || !paidAmount) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
+
+  // Start transaction
+  const { sequelize } = require('../../../../lib/sequelize');
+  const t = await sequelize.transaction();
+
+  try {
 
   // Generate transaction number
   const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
@@ -144,7 +156,8 @@ async function createTransaction(req: NextApiRequest, res: NextApiResponse) {
       transactionDate: {
         [require('sequelize').Op.gte]: new Date().setHours(0, 0, 0, 0)
       }
-    }
+    },
+    transaction: t
   });
   const transactionNumber = `TRX${today}${String(count + 1).padStart(4, '0')}`;
 
@@ -157,6 +170,7 @@ async function createTransaction(req: NextApiRequest, res: NextApiResponse) {
   const changeAmount = paidAmount - total;
 
   if (changeAmount < 0) {
+    await t.rollback();
     return res.status(400).json({ error: 'Insufficient payment amount' });
   }
 
@@ -176,8 +190,10 @@ async function createTransaction(req: NextApiRequest, res: NextApiResponse) {
     paidAmount,
     changeAmount,
     status: 'completed',
-    notes
-  });
+    notes,
+    tableNumber,
+    orderType
+  }, { transaction: t });
 
   // Create transaction items
   const transactionItems = await Promise.all(
@@ -193,9 +209,60 @@ async function createTransaction(req: NextApiRequest, res: NextApiResponse) {
         discount: item.discount || 0,
         subtotal: itemSubtotal,
         notes: item.notes
-      });
+      }, { transaction: t });
     })
   );
+
+  // Send to kitchen if needed
+  let kitchenOrder = null;
+  if (sendToKitchen && orderType !== 'takeaway') {
+    const kitchenOrderNumber = `KIT-${Date.now()}`;
+    
+    // Create kitchen order
+    kitchenOrder = await KitchenOrder.create({
+      tenantId: session.user.tenantId,
+      orderNumber: kitchenOrderNumber,
+      posTransactionId: transaction.id,
+      tableNumber,
+      orderType,
+      customerName,
+      status: 'new',
+      priority: 'normal',
+      totalAmount: total,
+      receivedAt: new Date(),
+      estimatedTime: calculateEstimatedTime(items)
+    }, { transaction: t });
+
+    // Create kitchen order items
+    for (const item of items) {
+      await KitchenOrderItem.create({
+        kitchenOrderId: kitchenOrder.id,
+        productId: item.productId,
+        name: item.productName,
+        quantity: item.quantity,
+        notes: item.notes
+      }, { transaction: t });
+    }
+
+    // Update POS transaction with kitchen order ID
+    await transaction.update({ 
+      kitchenOrderId: kitchenOrder.id 
+    }, { transaction: t });
+
+    // Update table status if dine-in
+    if (orderType === 'dine-in' && tableNumber) {
+      const table = await Table.findOne({
+        where: { tableNumber },
+        transaction: t
+      });
+      
+      if (table) {
+        await table.update({ status: 'occupied' }, { transaction: t });
+      }
+    }
+  }
+
+  await t.commit();
 
   // Fetch created transaction with all details
   const createdTransaction = await PosTransaction.findByPk(transaction.id, {
@@ -212,7 +279,7 @@ async function createTransaction(req: NextApiRequest, res: NextApiResponse) {
           {
             model: Product,
             as: 'product',
-            attributes: ['id', 'name', 'sku']
+            attributes: ['id', 'name', 'sku', 'category']
           }
         ]
       }
@@ -220,7 +287,43 @@ async function createTransaction(req: NextApiRequest, res: NextApiResponse) {
   });
 
   return res.status(201).json({
-    message: 'Transaction created successfully',
-    transaction: createdTransaction
+    success: true,
+    message: sendToKitchen ? 'Transaction created and sent to kitchen' : 'Transaction created successfully',
+    data: createdTransaction,
+    kitchenOrder
   });
+
+  } catch (error: any) {
+    await t.rollback();
+    console.error('Create transaction error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to create transaction',
+      message: error.message 
+    });
+  }
+}
+
+// Helper function to calculate estimated time
+function calculateEstimatedTime(items: any[]): number {
+  if (!items || items.length === 0) return 15;
+  
+  // Base time per item type (in minutes)
+  const baseTimes: Record<string, number> = {
+    'appetizer': 5,
+    'main': 15,
+    'dessert': 8,
+    'beverage': 3,
+    'default': 10
+  };
+
+  // Calculate total time
+  let totalTime = 0;
+  items.forEach(item => {
+    const category = item.category || 'default';
+    const itemTime = baseTimes[category] || baseTimes.default;
+    totalTime += itemTime;
+  });
+
+  // Parallel preparation - divide by 2 for multiple items
+  return Math.ceil(totalTime / 2) || 15;
 }

@@ -71,6 +71,12 @@ db.Store = require('./Store');
 db.Branch = require('./Branch');
 db.StoreSetting = require('./StoreSetting');
 
+// Kitchen Models
+db.KitchenOrder = require('./KitchenOrder');
+db.KitchenOrderItem = require('./KitchenOrderItem');
+db.KitchenInventoryItem = require('./KitchenInventoryItem');
+db.KitchenInventoryTransaction = require('./KitchenInventoryTransaction');
+
 // Admin Panel Models
 db.Partner = require('./Partner');
 db.SubscriptionPackage = require('./SubscriptionPackage');

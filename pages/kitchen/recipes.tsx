@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { 
   Search, Plus, Edit, Trash2, ChefHat, Clock,
-  Users, DollarSign, Package, BookOpen, Eye
+  Users, DollarSign, Package, BookOpen, Eye, X
 } from 'lucide-react';
 
 interface Ingredient {
@@ -21,22 +21,16 @@ interface Ingredient {
   quantity: number;
   unit: string;
   cost: number;
+  productId?: number;
 }
 
-interface Recipe {
-  id: string;
+interface Product {
+  id: number;
   name: string;
-  category: string;
-  description: string;
-  prepTime: number;
-  cookTime: number;
-  servings: number;
-  difficulty: 'easy' | 'medium' | 'hard';
-  ingredients: Ingredient[];
-  instructions: string[];
-  cost: number;
+  sku: string;
+  unit: string;
   price: number;
-  image?: string;
+  cost: number;
 }
 
 const RecipeManagementPage: React.FC = () => {
@@ -45,7 +39,31 @@ const RecipeManagementPage: React.FC = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [showVersionDialog, setShowVersionDialog] = useState(false);
+  const [recipeVersions, setRecipeVersions] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [showProductDropdown, setShowProductDropdown] = useState<number | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    category: '',
+    difficulty: 'medium' as 'easy' | 'medium' | 'hard',
+    prepTime: 0,
+    cookTime: 0,
+    servings: 1,
+    instructions: [''],
+    ingredients: [] as Array<{
+      name: string;
+      quantity: number;
+      unit: string;
+      cost: number;
+      productId?: number;
+    }>
+  });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -53,95 +71,223 @@ const RecipeManagementPage: React.FC = () => {
     }
   }, [status, router]);
 
-  // Mock data
+  // Fetch recipes from API
   useEffect(() => {
-    const mockRecipes: Recipe[] = [
-      {
-        id: '1',
-        name: 'Nasi Goreng Spesial',
-        category: 'Main Course',
-        description: 'Nasi goreng dengan telur, ayam, dan sayuran',
-        prepTime: 10,
-        cookTime: 15,
-        servings: 1,
-        difficulty: 'easy',
-        cost: 12000,
-        price: 35000,
-        ingredients: [
-          { id: '1', name: 'Nasi Putih', quantity: 300, unit: 'gram', cost: 3000 },
-          { id: '2', name: 'Ayam Fillet', quantity: 100, unit: 'gram', cost: 5000 },
-          { id: '3', name: 'Telur', quantity: 1, unit: 'butir', cost: 2000 },
-          { id: '4', name: 'Bawang Merah', quantity: 3, unit: 'siung', cost: 500 },
-          { id: '5', name: 'Kecap Manis', quantity: 2, unit: 'sdm', cost: 1500 }
-        ],
-        instructions: [
-          'Panaskan minyak dalam wajan',
-          'Tumis bawang merah hingga harum',
-          'Masukkan ayam, masak hingga matang',
-          'Masukkan nasi, aduk rata',
-          'Tambahkan kecap dan bumbu',
-          'Buat lubang di tengah, masukkan telur',
-          'Aduk semua bahan hingga tercampur rata',
-          'Sajikan dengan kerupuk dan acar'
-        ]
-      },
-      {
-        id: '2',
-        name: 'Soto Ayam',
-        category: 'Soup',
-        description: 'Soto ayam kuning dengan kuah gurih',
-        prepTime: 20,
-        cookTime: 45,
-        servings: 1,
-        difficulty: 'medium',
-        cost: 15000,
-        price: 40000,
-        ingredients: [
-          { id: '1', name: 'Ayam', quantity: 200, unit: 'gram', cost: 8000 },
-          { id: '2', name: 'Kunyit', quantity: 2, unit: 'cm', cost: 500 },
-          { id: '3', name: 'Serai', quantity: 1, unit: 'batang', cost: 300 },
-          { id: '4', name: 'Daun Jeruk', quantity: 3, unit: 'lembar', cost: 200 },
-          { id: '5', name: 'Soun', quantity: 50, unit: 'gram', cost: 2000 }
-        ],
-        instructions: [
-          'Rebus ayam dengan bumbu halus',
-          'Angkat ayam, suwir-suwir',
-          'Saring kaldu',
-          'Siapkan mangkuk saji',
-          'Masukkan soun, tauge, ayam',
-          'Tuang kuah panas',
-          'Beri pelengkap: bawang goreng, seledri, jeruk nipis'
-        ]
-      },
-      {
-        id: '3',
-        name: 'Ayam Bakar Madu',
-        category: 'Main Course',
-        description: 'Ayam bakar dengan saus madu pedas manis',
-        prepTime: 30,
-        cookTime: 40,
-        servings: 1,
-        difficulty: 'medium',
-        cost: 18000,
-        price: 50000,
-        ingredients: [
-          { id: '1', name: 'Ayam Kampung', quantity: 300, unit: 'gram', cost: 12000 },
-          { id: '2', name: 'Madu', quantity: 3, unit: 'sdm', cost: 3000 },
-          { id: '3', name: 'Kecap Manis', quantity: 2, unit: 'sdm', cost: 1000 },
-          { id: '4', name: 'Bawang Putih', quantity: 5, unit: 'siung', cost: 1000 },
-          { id: '5', name: 'Cabai Merah', quantity: 3, unit: 'buah', cost: 1000 }
-        ],
-        instructions: [
-          'Marinasi ayam dengan bumbu halus selama 30 menit',
-          'Bakar ayam di atas bara api',
-          'Olesi dengan saus madu secara berkala',
-          'Bakar hingga matang dan kecoklatan',
-          'Sajikan dengan nasi hangat dan lalapan'
-        ]
+    if (status === 'authenticated') {
+      fetchRecipes();
+      fetchProducts();
+    }
+  }, [status]);
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('/api/products/simple');
+      const result = await response.json();
+      
+      if (result.success) {
+        setProducts(result.data);
       }
-    ];
-    setRecipes(mockRecipes);
-  }, []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
+
+  const calculateTotalCost = useMemo(() => {
+    return formData.ingredients.reduce((total, ing) => {
+      return total + (ing.cost * ing.quantity);
+    }, 0);
+  }, [formData.ingredients]);
+
+  const fetchRecipes = async () => {
+    try {
+      const response = await fetch('/api/recipes');
+      const result = await response.json();
+      
+      if (result.success) {
+        // Transform data to match interface
+        const transformedRecipes = result.data.map((r: any) => ({
+          id: r.id.toString(),
+          name: r.name,
+          category: r.category || 'Uncategorized',
+          description: r.description || '',
+          prepTime: r.preparation_time_minutes || 0,
+          cookTime: r.cooking_time_minutes || 0,
+          servings: r.batch_size || 1,
+          difficulty: r.difficulty_level || 'medium',
+          cost: r.total_cost || 0,
+          price: r.product?.price || 0,
+          ingredients: r.ingredients?.map((ing: any) => ({
+            id: ing.id.toString(),
+            name: ing.material?.name || 'Unknown',
+            quantity: ing.quantity,
+            unit: ing.unit,
+            cost: ing.subtotal_cost || 0
+          })) || [],
+          instructions: r.instructions ? r.instructions.split('\n').filter((i: string) => i.trim()) : []
+        }));
+        
+        setRecipes(transformedRecipes);
+      }
+    } catch (error) {
+      console.error('Error fetching recipes:', error);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.category) {
+      alert('Mohon lengkapi nama dan kategori resep');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/recipes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          description: formData.description,
+          category: formData.category,
+          difficulty: formData.difficulty,
+          prepTime: formData.prepTime,
+          cookTime: formData.cookTime,
+          batchSize: formData.servings,
+          batchUnit: 'porsi',
+          instructions: formData.instructions.filter(i => i.trim()),
+          ingredients: formData.ingredients.map(ing => ({
+            productId: ing.productId || null,
+            quantity: ing.quantity,
+            unit: ing.unit,
+            unitCost: ing.cost,
+            notes: ''
+          }))
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setShowAddDialog(false);
+        resetForm();
+        fetchRecipes();
+        alert('Resep berhasil ditambahkan!');
+      } else {
+        alert('Gagal menambah resep: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error adding recipe:', error);
+      alert('Terjadi kesalahan saat menambah resep');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      category: '',
+      difficulty: 'medium',
+      prepTime: 0,
+      cookTime: 0,
+      servings: 1,
+      instructions: [''],
+      ingredients: []
+    });
+  };
+
+  const addInstruction = () => {
+    setFormData(prev => ({
+      ...prev,
+      instructions: [...prev.instructions, '']
+    }));
+  };
+
+  const updateInstruction = (index: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      instructions: prev.instructions.map((inst, i) => i === index ? value : inst)
+    }));
+  };
+
+  const removeInstruction = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      instructions: prev.instructions.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addIngredient = () => {
+    setFormData(prev => ({
+      ...prev,
+      ingredients: [...prev.ingredients, { name: '', quantity: 0, unit: '', cost: 0 }]
+    }));
+  };
+
+  const updateIngredient = (index: number, field: string, value: string | number) => {
+    setFormData(prev => {
+      const newIngredients = [...prev.ingredients];
+      newIngredients[index] = { ...newIngredients[index], [field]: value };
+      
+      // If product is selected, update name, unit, and cost
+      if (field === 'productId' && typeof value === 'number') {
+        const product = products.find(p => p.id === value);
+        if (product) {
+          newIngredients[index] = {
+            ...newIngredients[index],
+            productId: value,
+            name: product.name,
+            unit: product.unit,
+            cost: product.cost || 0
+          };
+        }
+      }
+      
+      return { ...prev, ingredients: newIngredients };
+    });
+  };
+
+  const selectProduct = (index: number, product: Product) => {
+    updateIngredient(index, 'productId', product.id);
+    setShowProductDropdown(null);
+    setProductSearch('');
+  };
+
+  const filteredProducts = useMemo(() => {
+    if (!productSearch) return [];
+    return products.filter(p => 
+      p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+      p.sku.toLowerCase().includes(productSearch.toLowerCase())
+    ).slice(0, 10);
+  }, [productSearch, products]);
+
+  const removeIngredient = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      ingredients: prev.ingredients.filter((_, i) => i !== index)
+    }));
+  };
+
+  const fetchVersionHistory = async (recipeId: string) => {
+    try {
+      const response = await fetch(`/api/recipes/${recipeId}/versions`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setRecipeVersions(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching version history:', error);
+    }
+  };
+
+  const openVersionDialog = (recipe: Recipe) => {
+    setSelectedRecipe(recipe);
+    setShowVersionDialog(true);
+    fetchVersionHistory(recipe.id);
+  };
 
   const filteredRecipes = recipes.filter(recipe =>
     recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -382,6 +528,287 @@ const RecipeManagementPage: React.FC = () => {
           ))}
         </div>
 
+        {/* Add Recipe Dialog */}
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Tambah Resep Baru</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name">Nama Resep *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Contoh: Nasi Goreng Spesial"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="category">Kategori *</Label>
+                  <Input
+                    id="category"
+                    value={formData.category}
+                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                    placeholder="Contoh: Main Course"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="description">Deskripsi</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Deskripsi singkat tentang resep"
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <Label htmlFor="prepTime">Waktu Persiapan (menit)</Label>
+                  <Input
+                    id="prepTime"
+                    type="number"
+                    value={formData.prepTime}
+                    onChange={(e) => setFormData(prev => ({ ...prev, prepTime: parseInt(e.target.value) || 0 }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="cookTime">Waktu Masak (menit)</Label>
+                  <Input
+                    id="cookTime"
+                    type="number"
+                    value={formData.cookTime}
+                    onChange={(e) => setFormData(prev => ({ ...prev, cookTime: parseInt(e.target.value) || 0 }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="servings">Jumlah Porsi</Label>
+                  <Input
+                    id="servings"
+                    type="number"
+                    value={formData.servings}
+                    onChange={(e) => setFormData(prev => ({ ...prev, servings: parseInt(e.target.value) || 1 }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="difficulty">Tingkat Kesulitan</Label>
+                  <select
+                    id="difficulty"
+                    value={formData.difficulty}
+                    onChange={(e) => setFormData(prev => ({ ...prev, difficulty: e.target.value as 'easy' | 'medium' | 'hard' }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  >
+                    <option value="easy">Mudah</option>
+                    <option value="medium">Sedang</option>
+                    <option value="hard">Sulit</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Ingredients */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="text-lg font-semibold">Bahan-bahan</Label>
+                  <Button type="button" variant="outline" onClick={addIngredient}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Tambah Bahan
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  {formData.ingredients.map((ingredient, index) => (
+                    <div key={index} className="border rounded-lg p-3 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 relative">
+                          <Label className="text-xs text-gray-600">Nama Bahan</Label>
+                          <div className="relative">
+                            <Input
+                              placeholder="Ketik untuk cari bahan..."
+                              value={ingredient.name || ''}
+                              onChange={(e) => {
+                                updateIngredient(index, 'name', e.target.value);
+                                setProductSearch(e.target.value);
+                                setShowProductDropdown(index);
+                              }}
+                              onFocus={() => setShowProductDropdown(index)}
+                              className="pr-8"
+                            />
+                            {ingredient.name && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateIngredient(index, 'name', '');
+                                  updateIngredient(index, 'productId', 0);
+                                  updateIngredient(index, 'unit', '');
+                                  updateIngredient(index, 'cost', 0);
+                                }}
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+                            
+                            {/* Product Dropdown */}
+                            {showProductDropdown === index && productSearch && (
+                              <div className="absolute top-full left-0 right-0 bg-white border rounded-md shadow-lg z-10 mt-1 max-h-48 overflow-y-auto">
+                                {filteredProducts.length > 0 ? (
+                                  filteredProducts.map((product) => (
+                                    <button
+                                      key={product.id}
+                                      type="button"
+                                      onClick={() => selectProduct(index, product)}
+                                      className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center justify-between group"
+                                    >
+                                      <div>
+                                        <div className="font-medium text-sm">{product.name}</div>
+                                        <div className="text-xs text-gray-500">{product.sku} • {product.unit}</div>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="text-sm font-medium">{formatCurrency(product.price)}</div>
+                                        <div className="text-xs text-gray-500">Cost: {formatCurrency(product.cost || 0)}</div>
+                                      </div>
+                                    </button>
+                                  ))
+                                ) : (
+                                  <div className="px-3 py-2 text-sm text-gray-500">
+                                    Tidak ada produk ditemukan
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="w-20">
+                          <Label className="text-xs text-gray-600">Qty</Label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={ingredient.quantity || ''}
+                            onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value) || 0)}
+                            step="0.01"
+                          />
+                        </div>
+                        
+                        <div className="w-20">
+                          <Label className="text-xs text-gray-600">Unit</Label>
+                          <Input
+                            placeholder="Unit"
+                            value={ingredient.unit || ''}
+                            onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
+                          />
+                        </div>
+                        
+                        <div className="w-24">
+                          <Label className="text-xs text-gray-600">Cost/Unit</Label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={ingredient.cost || ''}
+                            onChange={(e) => updateIngredient(index, 'cost', parseFloat(e.target.value) || 0)}
+                            step="0.01"
+                          />
+                        </div>
+                        
+                        <div className="w-24">
+                          <Label className="text-xs text-gray-600">Subtotal</Label>
+                          <div className="h-10 px-3 bg-gray-50 rounded-md flex items-center text-sm font-medium">
+                            {formatCurrency((ingredient.cost || 0) * (ingredient.quantity || 0))}
+                          </div>
+                        </div>
+                        
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeIngredient(index)}
+                          className="text-red-600 hover:text-red-700 mt-5"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Total Cost Display */}
+                {formData.ingredients.length > 0 && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Total Cost Bahan:</span>
+                      <span className="text-lg font-bold text-gray-900">
+                        {formatCurrency(calculateTotalCost)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Per {formData.servings} porsi: {formatCurrency(calculateTotalCost / formData.servings)}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Instructions */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="text-lg font-semibold">Cara Memasak</Label>
+                  <Button type="button" variant="outline" onClick={addInstruction}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Tambah Langkah
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  {formData.instructions.map((instruction, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <div className="flex-shrink-0 w-8 h-8 bg-sky-100 text-sky-600 rounded-full flex items-center justify-center text-sm font-medium mt-1">
+                        {index + 1}
+                      </div>
+                      <Textarea
+                        value={instruction}
+                        onChange={(e) => updateInstruction(index, e.target.value)}
+                        placeholder={`Langkah ${index + 1}`}
+                        className="flex-1"
+                        rows={2}
+                      />
+                      {formData.instructions.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeInstruction(index)}
+                          className="text-red-600 hover:text-red-700 mt-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                Batal
+              </Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={loading}
+                className="bg-gradient-to-r from-sky-500 to-blue-600"
+              >
+                {loading ? 'Menyimpan...' : 'Simpan Resep'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Recipe Detail Dialog */}
         <Dialog open={!!selectedRecipe} onOpenChange={() => setSelectedRecipe(null)}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -478,9 +905,86 @@ const RecipeManagementPage: React.FC = () => {
               <Button variant="outline" onClick={() => setSelectedRecipe(null)}>
                 Tutup
               </Button>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  const printUrl = `/api/recipes/${selectedRecipe.id}/print`;
+                  window.open(printUrl, '_blank');
+                }}
+              >
+                <Package className="w-4 h-4 mr-2" />
+                Cetak Resep
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => openVersionDialog(selectedRecipe)}
+              >
+                <BookOpen className="w-4 h-4 mr-2" />
+                Riwayat Versi
+              </Button>
               <Button className="bg-gradient-to-r from-sky-500 to-blue-600">
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Resep
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Version History Dialog */}
+        <Dialog open={showVersionDialog} onOpenChange={setShowVersionDialog}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl">
+                Riwayat Versi - {selectedRecipe?.name}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {recipeVersions.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  Belum ada riwayat perubahan
+                </p>
+              ) : (
+                recipeVersions.map((version, index) => (
+                  <div key={version.id} className="border rounded-lg p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline">
+                          Versi {version.version}
+                        </Badge>
+                        <Badge 
+                          className={
+                            version.change_type === 'created' ? 'bg-green-100 text-green-800' :
+                            version.change_type === 'updated' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }
+                        >
+                          {version.change_type === 'created' ? 'Dibuat' :
+                           version.change_type === 'updated' ? 'Diubah' : 'Lainnya'}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {new Date(version.createdAt).toLocaleString('id-ID')}
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-gray-600">
+                      {version.changes_summary}
+                    </p>
+                    
+                    {version.user && (
+                      <p className="text-xs text-gray-500">
+                        Oleh: {version.user.name} ({version.user.email})
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowVersionDialog(false)}>
+                Tutup
               </Button>
             </DialogFooter>
           </DialogContent>

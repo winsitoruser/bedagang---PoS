@@ -7,9 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { 
   Search, Plus, Users, Clock, Award, 
-  Calendar, ChefHat, Edit, Trash2, Eye
+  Calendar, ChefHat, Edit, Trash2, Eye, X,
+  TrendingUp, TrendingDown, Utensils
 } from 'lucide-react';
 
 interface StaffMember {
@@ -29,6 +32,22 @@ const KitchenStaffPage: React.FC = () => {
   const { data: session, status } = useSession();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showPerformanceDialog, setShowPerformanceDialog] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [performanceData, setPerformanceData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    role: 'line_cook' as 'head_chef' | 'sous_chef' | 'line_cook' | 'prep_cook',
+    shift: 'morning' as 'morning' | 'afternoon' | 'night',
+    status: 'active' as 'active' | 'off' | 'leave',
+    phone: '',
+    email: '',
+    performance: 0
+  });
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -36,67 +55,37 @@ const KitchenStaffPage: React.FC = () => {
     }
   }, [status, router]);
 
-  // Mock data
+  // Fetch staff from API
   useEffect(() => {
-    const mockStaff: StaffMember[] = [
-      {
-        id: '1',
-        name: 'Chef Ahmad Rizki',
-        role: 'head_chef',
-        shift: 'morning',
-        status: 'active',
-        performance: 95,
-        ordersCompleted: 450,
-        avgPrepTime: 15,
-        joinDate: new Date('2023-01-15')
-      },
-      {
-        id: '2',
-        name: 'Siti Nurhaliza',
-        role: 'sous_chef',
-        shift: 'morning',
-        status: 'active',
-        performance: 92,
-        ordersCompleted: 380,
-        avgPrepTime: 17,
-        joinDate: new Date('2023-03-20')
-      },
-      {
-        id: '3',
-        name: 'Budi Santoso',
-        role: 'line_cook',
-        shift: 'afternoon',
-        status: 'active',
-        performance: 88,
-        ordersCompleted: 320,
-        avgPrepTime: 18,
-        joinDate: new Date('2023-06-10')
-      },
-      {
-        id: '4',
-        name: 'Dewi Lestari',
-        role: 'line_cook',
-        shift: 'night',
-        status: 'active',
-        performance: 85,
-        ordersCompleted: 290,
-        avgPrepTime: 19,
-        joinDate: new Date('2023-08-05')
-      },
-      {
-        id: '5',
-        name: 'Andi Wijaya',
-        role: 'prep_cook',
-        shift: 'morning',
-        status: 'off',
-        performance: 80,
-        ordersCompleted: 250,
-        avgPrepTime: 20,
-        joinDate: new Date('2023-09-12')
+    if (status === 'authenticated') {
+      fetchStaff();
+    }
+  }, [status]);
+
+  const fetchStaff = async () => {
+    try {
+      const response = await fetch('/api/kitchen/staff');
+      const result = await response.json();
+      
+      if (result.success) {
+        // Transform data to match interface
+        const transformedStaff = result.data.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          role: s.role,
+          shift: s.shift,
+          status: s.status,
+          performance: parseFloat(s.performance) || 0,
+          ordersCompleted: s.total_orders_assigned || 0,
+          avgPrepTime: s.avg_prep_time || 0,
+          joinDate: new Date(s.join_date)
+        }));
+        setStaff(transformedStaff);
       }
-    ];
-    setStaff(mockStaff);
-  }, []);
+    } catch (error) {
+      console.error('Error fetching staff:', error);
+    }
+  };
 
   const filteredStaff = staff.filter(member =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -149,6 +138,141 @@ const KitchenStaffPage: React.FC = () => {
     return labels[shift as keyof typeof labels];
   };
 
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.role || !formData.shift) {
+      alert('Mohon lengkapi nama, role, dan shift');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/kitchen/staff', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setShowAddDialog(false);
+        resetForm();
+        fetchStaff();
+        alert('Staff berhasil ditambahkan!');
+      } else {
+        alert('Gagal menambah staff: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error adding staff:', error);
+      alert('Terjadi kesalahan saat menambah staff');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      role: 'line_cook',
+      shift: 'morning',
+      status: 'active',
+      phone: '',
+      email: '',
+      performance: 0
+    });
+  };
+
+  const handleEdit = (member: StaffMember) => {
+    setEditingStaff(member);
+    setFormData({
+      name: member.name,
+      role: member.role,
+      shift: member.shift,
+      status: member.status,
+      phone: '',
+      email: '',
+      performance: member.performance
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingStaff || !formData.name || !formData.role || !formData.shift) {
+      alert('Mohon lengkapi nama, role, dan shift');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/kitchen/staff/${editingStaff.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setShowEditDialog(false);
+        setEditingStaff(null);
+        resetForm();
+        fetchStaff();
+        alert('Staff berhasil diperbarui!');
+      } else {
+        alert('Gagal memperbarui staff: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error updating staff:', error);
+      alert('Terjadi kesalahan saat memperbarui staff');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (member: StaffMember) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${member.name}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/kitchen/staff/${member.id}`, {
+        method: 'DELETE'
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        fetchStaff();
+        alert('Staff berhasil dihapus!');
+      } else {
+        alert('Gagal menghapus staff: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error deleting staff:', error);
+      alert('Terjadi kesalahan saat menghapus staff');
+    }
+  };
+
+  const handleViewPerformance = async (member: StaffMember) => {
+    setSelectedStaff(member);
+    setShowPerformanceDialog(true);
+    
+    try {
+      const response = await fetch(`/api/kitchen/staff/${member.id}/performance`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setPerformanceData(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching performance data:', error);
+    }
+  };
+
   if (status === "loading") {
     return (
       <DashboardLayout>
@@ -181,7 +305,10 @@ const KitchenStaffPage: React.FC = () => {
               <p className="text-gray-600">Kelola staff dan shift dapur</p>
             </div>
           </div>
-          <Button className="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700">
+          <Button 
+            onClick={() => setShowAddDialog(true)}
+            className="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700"
+          >
             <Plus className="w-4 h-4 mr-2" />
             Tambah Staff
           </Button>
@@ -305,14 +432,28 @@ const KitchenStaffPage: React.FC = () => {
                   </div>
 
                   <div className="flex space-x-2 pt-2">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleViewPerformance(member)}
+                    >
                       <Eye className="w-4 h-4 mr-1" />
                       Detail
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEdit(member)}
+                    >
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => handleDelete(member)}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -322,6 +463,336 @@ const KitchenStaffPage: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Add Staff Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tambah Staff Dapur</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="name">Nama Lengkap</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="Masukkan nama staff"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="role">Role</Label>
+              <select
+                id="role"
+                value={formData.role}
+                onChange={(e) => setFormData({...formData, role: e.target.value as any})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="head_chef">Head Chef</option>
+                <option value="sous_chef">Sous Chef</option>
+                <option value="line_cook">Line Cook</option>
+                <option value="prep_cook">Prep Cook</option>
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="shift">Shift</Label>
+              <select
+                id="shift"
+                value={formData.shift}
+                onChange={(e) => setFormData({...formData, shift: e.target.value as any})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="morning">Pagi (06:00-14:00)</option>
+                <option value="afternoon">Siang (14:00-22:00)</option>
+                <option value="night">Malam (22:00-06:00)</option>
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <select
+                id="status"
+                value={formData.status}
+                onChange={(e) => setFormData({...formData, status: e.target.value as any})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="active">Aktif</option>
+                <option value="off">Off</option>
+                <option value="leave">Cuti</option>
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="phone">No. Telepon</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                placeholder="Masukkan nomor telepon"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                placeholder="Masukkan email"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+              Batal
+            </Button>
+            <Button 
+              onClick={handleSubmit}
+              disabled={loading}
+              className="bg-gradient-to-r from-sky-500 to-blue-600"
+            >
+              {loading ? 'Menyimpan...' : 'Simpan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Staff Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Staff Dapur</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name">Nama Lengkap</Label>
+              <Input
+                id="edit-name"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="Masukkan nama staff"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-role">Role</Label>
+              <select
+                id="edit-role"
+                value={formData.role}
+                onChange={(e) => setFormData({...formData, role: e.target.value as any})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="head_chef">Head Chef</option>
+                <option value="sous_chef">Sous Chef</option>
+                <option value="line_cook">Line Cook</option>
+                <option value="prep_cook">Prep Cook</option>
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="edit-shift">Shift</Label>
+              <select
+                id="edit-shift"
+                value={formData.shift}
+                onChange={(e) => setFormData({...formData, shift: e.target.value as any})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="morning">Pagi (06:00-14:00)</option>
+                <option value="afternoon">Siang (14:00-22:00)</option>
+                <option value="night">Malam (22:00-06:00)</option>
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="edit-status">Status</Label>
+              <select
+                id="edit-status"
+                value={formData.status}
+                onChange={(e) => setFormData({...formData, status: e.target.value as any})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="active">Aktif</option>
+                <option value="off">Off</option>
+                <option value="leave">Cuti</option>
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="edit-performance">Performance (%)</Label>
+              <Input
+                id="edit-performance"
+                type="number"
+                min="0"
+                max="100"
+                value={formData.performance}
+                onChange={(e) => setFormData({...formData, performance: parseInt(e.target.value) || 0})}
+                placeholder="0-100"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-phone">No. Telepon</Label>
+              <Input
+                id="edit-phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                placeholder="Masukkan nomor telepon"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                placeholder="Masukkan email"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Batal
+            </Button>
+            <Button 
+              onClick={handleUpdate}
+              disabled={loading}
+              className="bg-gradient-to-r from-sky-500 to-blue-600"
+            >
+              {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Performance Dialog */}
+      <Dialog open={showPerformanceDialog} onOpenChange={setShowPerformanceDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Award className="w-5 h-5" />
+              Performance Detail - {selectedStaff?.name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {performanceData ? (
+            <div className="space-y-6">
+              {/* Performance Score Card */}
+              <div className="grid grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {performanceData.performance.score}%
+                    </div>
+                    <div className="text-sm text-gray-600">Performance Score</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {performanceData.performance.totalOrders}
+                    </div>
+                    <div className="text-sm text-gray-600">Total Orders</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {performanceData.performance.completionRate}%
+                    </div>
+                    <div className="text-sm text-gray-600">Completion Rate</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-amber-600">
+                      {performanceData.performance.avgPrepTime}m
+                    </div>
+                    <div className="text-sm text-gray-600">Avg. Prep Time</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Popular Dishes */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Utensils className="w-5 h-5" />
+                    Popular Dishes (Last 30 Days)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {performanceData.popularDishes.map((dish: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                            {index + 1}
+                          </div>
+                          <span className="font-medium">{dish.dish_name}</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                          <span>{dish.times_prepared} kali</span>
+                          <span>Avg: {dish.avg_quantity} pcs</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Performance Trend */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5" />
+                    Daily Performance (Last 30 Days)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {performanceData.dailyData.map((day: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-2 border-b">
+                        <span className="text-sm text-gray-600">
+                          {new Date(day.date).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' })}
+                        </span>
+                        <div className="flex items-center gap-4 text-sm">
+                          <span>{day.total_orders} orders</span>
+                          <span className={day.avg_preparation_time < 20 ? 'text-green-600' : 'text-amber-600'}>
+                            {Math.round(day.avg_preparation_time || 0)}m avg
+                          </span>
+                          <span className="text-green-600">{day.completed_orders} done</span>
+                          {day.cancelled_orders > 0 && (
+                            <span className="text-red-600">{day.cancelled_orders} cancelled</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin h-8 w-8 border-4 border-sky-600 border-t-transparent rounded-full"></div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPerformanceDialog(false)}>
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

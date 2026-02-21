@@ -48,71 +48,31 @@ const KitchenOrdersPage: React.FC = () => {
     }
   }, [status, router]);
 
-  // Mock data
-  useEffect(() => {
-    const mockOrders: Order[] = [
-      {
-        id: '1',
-        orderNumber: 'ORD-001',
-        tableNumber: '5',
-        orderType: 'dine-in',
-        items: 3,
-        status: 'preparing',
-        priority: 'urgent',
-        receivedAt: new Date(Date.now() - 10 * 60000),
-        totalAmount: 125000
-      },
-      {
-        id: '2',
-        orderNumber: 'ORD-002',
-        tableNumber: '3',
-        orderType: 'dine-in',
-        items: 4,
-        status: 'ready',
-        priority: 'normal',
-        receivedAt: new Date(Date.now() - 20 * 60000),
-        completedAt: new Date(Date.now() - 2 * 60000),
-        prepTime: 18,
-        totalAmount: 180000
-      },
-      {
-        id: '3',
-        orderNumber: 'ORD-003',
-        orderType: 'takeaway',
-        customerName: 'Budi Santoso',
-        items: 5,
-        status: 'served',
-        priority: 'normal',
-        receivedAt: new Date(Date.now() - 45 * 60000),
-        completedAt: new Date(Date.now() - 30 * 60000),
-        prepTime: 15,
-        totalAmount: 250000
-      },
-      {
-        id: '4',
-        orderNumber: 'ORD-004',
-        orderType: 'delivery',
-        customerName: 'Siti Aminah',
-        items: 2,
-        status: 'new',
-        priority: 'normal',
-        receivedAt: new Date(Date.now() - 2 * 60000),
-        totalAmount: 95000
-      },
-      {
-        id: '5',
-        orderNumber: 'ORD-005',
-        tableNumber: '8',
-        orderType: 'dine-in',
-        items: 6,
-        status: 'preparing',
-        priority: 'normal',
-        receivedAt: new Date(Date.now() - 15 * 60000),
-        totalAmount: 320000
+  // Fetch orders from API
+  const fetchOrders = async () => {
+    try {
+      const params = new URLSearchParams({
+        status: statusFilter,
+        orderType: typeFilter,
+        search: searchQuery,
+        limit: '100'
+      });
+
+      const response = await fetch(`/api/kitchen/orders?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(data.data || []);
       }
-    ];
-    setOrders(mockOrders);
-  }, []);
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 5000); // Auto refresh every 5 seconds
+    return () => clearInterval(interval);
+  }, [statusFilter, typeFilter, searchQuery]);
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||

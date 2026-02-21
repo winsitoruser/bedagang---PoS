@@ -40,96 +40,26 @@ const KitchenInventoryPage: React.FC = () => {
     }
   }, [status, router]);
 
-  // Mock data
+  // Fetch inventory data from API
   useEffect(() => {
-    const mockInventory: InventoryItem[] = [
-      {
-        id: '1',
-        name: 'Ayam Fillet',
-        category: 'Protein',
-        currentStock: 5,
-        unit: 'kg',
-        minStock: 10,
-        maxStock: 50,
-        reorderPoint: 15,
-        unitCost: 50000,
-        totalValue: 250000,
-        lastRestocked: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        status: 'critical'
-      },
-      {
-        id: '2',
-        name: 'Beras Premium',
-        category: 'Carbs',
-        currentStock: 25,
-        unit: 'kg',
-        minStock: 20,
-        maxStock: 100,
-        reorderPoint: 30,
-        unitCost: 15000,
-        totalValue: 375000,
-        lastRestocked: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        status: 'good'
-      },
-      {
-        id: '3',
-        name: 'Minyak Goreng',
-        category: 'Cooking Oil',
-        currentStock: 8,
-        unit: 'liter',
-        minStock: 10,
-        maxStock: 40,
-        reorderPoint: 15,
-        unitCost: 18000,
-        totalValue: 144000,
-        lastRestocked: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        status: 'low'
-      },
-      {
-        id: '4',
-        name: 'Bawang Merah',
-        category: 'Vegetables',
-        currentStock: 3,
-        unit: 'kg',
-        minStock: 5,
-        maxStock: 20,
-        reorderPoint: 8,
-        unitCost: 35000,
-        totalValue: 105000,
-        lastRestocked: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-        status: 'critical'
-      },
-      {
-        id: '5',
-        name: 'Telur Ayam',
-        category: 'Protein',
-        currentStock: 120,
-        unit: 'butir',
-        minStock: 50,
-        maxStock: 200,
-        reorderPoint: 80,
-        unitCost: 2000,
-        totalValue: 240000,
-        lastRestocked: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-        status: 'good'
-      },
-      {
-        id: '6',
-        name: 'Cabai Merah',
-        category: 'Vegetables',
-        currentStock: 2,
-        unit: 'kg',
-        minStock: 3,
-        maxStock: 15,
-        reorderPoint: 5,
-        unitCost: 45000,
-        totalValue: 90000,
-        lastRestocked: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-        status: 'critical'
+    fetchInventory();
+  }, [filterStatus, searchQuery]);
+
+  const fetchInventory = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (filterStatus !== 'all') params.append('status', filterStatus);
+      if (searchQuery) params.append('search', searchQuery);
+      
+      const response = await fetch(`/api/kitchen/inventory?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        setInventory(data.data || []);
       }
-    ];
-    setInventory(mockInventory);
-  }, []);
+    } catch (error) {
+      console.error('Failed to fetch inventory:', error);
+    }
+  };
 
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

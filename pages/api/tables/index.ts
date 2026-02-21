@@ -64,12 +64,48 @@ async function getTables(req: NextApiRequest, res: NextApiResponse, Table: any) 
         required: false
       }
     ],
-    order: [['tableNumber', 'ASC']]
+    order: [
+      ['floor', 'ASC'],
+      ['tableNumber', 'ASC']
+    ]
   });
+
+  // Get current orders for each table
+  const { KitchenOrder, PosTransaction } = db;
+  const tablesWithOrders = await Promise.all(
+    tables.map(async (table: any) => {
+      const currentOrder = await KitchenOrder.findOne({
+        where: {
+          tableNumber: table.tableNumber,
+          status: ['new', 'preparing', 'ready']
+        },
+        include: [
+          {
+            model: PosTransaction,
+            as: 'posTransaction',
+            attributes: ['transactionNumber']
+          }
+        ],
+        order: [['receivedAt', 'DESC']]
+      });
+
+      return {
+        ...table.toJSON(),
+        currentOrder: currentOrder ? {
+          id: currentOrder.id,
+          orderNumber: currentOrder.orderNumber,
+          customerName: currentOrder.customerName,
+          orderType: currentOrder.orderType,
+          status: currentOrder.status,
+          startTime: currentOrder.receivedAt
+        } : null
+      };
+    })
+  );
 
   return res.status(200).json({
     success: true,
-    data: tables
+    data: tablesWithOrders
   });
 }
 

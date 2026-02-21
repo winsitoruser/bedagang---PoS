@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const { sequelize } = require('../lib/sequelizeClient');
+const sequelize = require('../lib/sequelize');
 
 const KitchenInventoryTransaction = sequelize.define('KitchenInventoryTransaction', {
   id: {
@@ -109,7 +109,7 @@ KitchenInventoryTransaction.associate = (models) => {
   if (models.User) {
     KitchenInventoryTransaction.belongsTo(models.User, {
       foreignKey: 'performed_by',
-      as: 'user'
+      as: 'performedByUser'
     });
   }
 };
