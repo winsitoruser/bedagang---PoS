@@ -21,9 +21,21 @@ export const authOptions: NextAuthOptions = {
         try {
           const db = getDb();
           
-          // Find user by email
+          // Find user by email with related data
           const user = await db.User.findOne({
-            where: { email: credentials.email }
+            where: { email: credentials.email },
+            include: [
+              {
+                model: db.Branch,
+                as: 'assignedBranch',
+                required: false
+              },
+              {
+                model: db.Tenant,
+                as: 'tenant',
+                required: false
+              }
+            ]
           });
 
           if (!user) {
@@ -56,6 +68,11 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
             businessName: user.businessName,
             tenantId: user.tenant_id,
+            branchId: user.assignedBranch?.id || null,
+            branchName: user.assignedBranch?.name || null,
+            branchCode: user.assignedBranch?.code || null,
+            tenantName: user.tenant?.name || null,
+            assignedBranchId: user.assignedBranchId || null,
           };
         } catch (error) {
           console.error('Auth error:', error);
@@ -80,6 +97,11 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.businessName = user.businessName;
         token.tenantId = user.tenantId;
+        token.branchId = user.branchId;
+        token.branchName = user.branchName;
+        token.branchCode = user.branchCode;
+        token.tenantName = user.tenantName;
+        token.assignedBranchId = user.assignedBranchId;
       }
       return token;
     },
@@ -89,6 +111,11 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string;
         session.user.businessName = token.businessName as string;
         session.user.tenantId = token.tenantId as string;
+        session.user.branchId = token.branchId as string;
+        session.user.branchName = token.branchName as string;
+        session.user.branchCode = token.branchCode as string;
+        session.user.tenantName = token.tenantName as string;
+        session.user.assignedBranchId = token.assignedBranchId as string;
       }
       return session;
     }

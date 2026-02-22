@@ -17,6 +17,12 @@ declare module "next-auth" {
     department?: string
     status?: 'ACTIVE' | 'INACTIVE'
     workLocation?: string
+    // Branch properties for multi-branch
+    branchId?: string
+    branchName?: string
+    branchCode?: string
+    tenantName?: string
+    assignedBranchId?: string
   }
 
   /**
@@ -39,5 +45,12 @@ declare module "next-auth/jwt" {
     department?: string
     status?: 'ACTIVE' | 'INACTIVE'
     workLocation?: string
+    // Branch properties for multi-branch
+    branchId?: string
+    branchName?: string
+    branchCode?: string
+    tenantName?: string
+    assignedBranchId?: string
+    tenantId?: string
   }
 }

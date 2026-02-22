@@ -80,6 +80,15 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: true
     },
+    branchId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      field: 'branch_id',
+      references: {
+        model: 'branches',
+        key: 'id'
+      }
+    },
     notes: {
       type: DataTypes.TEXT,
       allowNull: true
@@ -91,7 +100,22 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     tableName: 'productions',
     timestamps: true,
-    underscored: true
+    underscored: true,
+    indexes: [
+      {
+        fields: ['batch_number'],
+        unique: true
+      },
+      {
+        fields: ['production_date']
+      },
+      {
+        fields: ['status']
+      },
+      {
+        fields: ['branch_id']
+      }
+    ]
   });
 
   Production.associate = (models) => {
@@ -121,6 +145,13 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: 'production_id',
       as: 'materials'
     });
+    
+    if (models.Branch) {
+      Production.belongsTo(models.Branch, {
+        foreignKey: 'branchId',
+        as: 'branch'
+      });
+    }
   };
 
   return Production;
