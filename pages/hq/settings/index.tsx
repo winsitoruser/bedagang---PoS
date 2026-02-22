@@ -125,15 +125,6 @@ export default function HQGlobalSettings() {
   const [hasChanges, setHasChanges] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  useEffect(() => {
-    setMounted(true);
-    fetchSettings();
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
   const fetchSettings = async () => {
     setLoading(true);
     try {
@@ -150,6 +141,15 @@ export default function HQGlobalSettings() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setMounted(true);
+    fetchSettings();
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   const saveSettings = async () => {
     setSaving(true);

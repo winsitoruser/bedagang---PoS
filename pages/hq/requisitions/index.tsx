@@ -576,7 +576,7 @@ export default function InternalRequisitions() {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">{selectedRequisition.irNumber}</h2>
+                  <h2 className="text-xl font-bold text-gray-900">{selectedRequisition?.irNumber}</h2>
                   <p className="text-sm text-gray-500">Detail Internal Requisition</p>
                 </div>
                 <button
@@ -594,8 +594,8 @@ export default function InternalRequisitions() {
                   <div className="flex items-center gap-2">
                     <Building2 className="w-5 h-5 text-gray-400" />
                     <div>
-                      <div className="font-medium">{selectedRequisition.requestingBranch.name}</div>
-                      <div className="text-sm text-gray-500">{selectedRequisition.requestingBranch.city}</div>
+                      <div className="font-medium">{selectedRequisition?.requestingBranch?.name}</div>
+                      <div className="text-sm text-gray-500">{selectedRequisition?.requestingBranch?.city}</div>
                     </div>
                   </div>
                 </div>
@@ -605,7 +605,7 @@ export default function InternalRequisitions() {
                     <Package className="w-5 h-5 text-gray-400" />
                     <div>
                       <div className="font-medium">
-                        {selectedRequisition.fulfillingBranch?.name || 'Belum ditentukan'}
+                        {selectedRequisition?.fulfillingBranch?.name || 'Belum ditentukan'}
                       </div>
                     </div>
                   </div>
@@ -615,23 +615,23 @@ export default function InternalRequisitions() {
               <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="bg-gray-50 rounded-lg p-3">
                   <div className="text-sm text-gray-500">Status</div>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusColors[selectedRequisition.status]}`}>
-                    {statusLabels[selectedRequisition.status]}
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusColors[selectedRequisition?.status] || ''}`}>
+                    {statusLabels[selectedRequisition?.status] || '-'}
                   </span>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <div className="text-sm text-gray-500">Prioritas</div>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${priorityColors[selectedRequisition.priority]}`}>
-                    {selectedRequisition.priority.toUpperCase()}
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${priorityColors[selectedRequisition?.priority] || ''}`}>
+                    {selectedRequisition?.priority?.toUpperCase() || '-'}
                   </span>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <div className="text-sm text-gray-500">Total Item</div>
-                  <div className="font-bold text-lg">{selectedRequisition.totalItems}</div>
+                  <div className="font-bold text-lg">{selectedRequisition?.totalItems || 0}</div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <div className="text-sm text-gray-500">Estimasi Nilai</div>
-                  <div className="font-bold text-lg">{formatCurrency(selectedRequisition.estimatedValue)}</div>
+                  <div className="font-bold text-lg">{formatCurrency(selectedRequisition?.estimatedValue || 0)}</div>
                 </div>
               </div>
 
@@ -649,8 +649,8 @@ export default function InternalRequisitions() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {selectedRequisition.items.length > 0 ? (
-                      selectedRequisition.items.map((item) => (
+                    {selectedRequisition?.items?.length > 0 ? (
+                      selectedRequisition?.items?.map((item) => (
                         <tr key={item.id}>
                           <td className="px-4 py-3">
                             <div className="font-medium text-gray-900">{item.productName}</div>
@@ -692,16 +692,16 @@ export default function InternalRequisitions() {
                 >
                   Tutup
                 </button>
-                {['submitted', 'under_review'].includes(selectedRequisition.status) && (
+                {['submitted', 'under_review'].includes(selectedRequisition?.status) && (
                   <>
                     <button
-                      onClick={() => handleReject(selectedRequisition.id)}
+                      onClick={() => handleReject(selectedRequisition?.id)}
                       className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
                     >
                       Tolak
                     </button>
                     <button
-                      onClick={() => handleApprove(selectedRequisition.id)}
+                      onClick={() => handleApprove(selectedRequisition?.id)}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                     >
                       Setujui

@@ -550,8 +550,8 @@ export default function BranchPerformancePage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-semibold text-gray-900">{selectedBranch.name} - Trend 6 Bulan</h3>
-                <p className="text-sm text-gray-500">Manager: {selectedBranch.manager}</p>
+                <h3 className="font-semibold text-gray-900">{selectedBranch?.name} - Trend 6 Bulan</h3>
+                <p className="text-sm text-gray-500">Manager: {selectedBranch?.manager}</p>
               </div>
               <button
                 onClick={() => setSelectedBranch(null)}
@@ -562,7 +562,7 @@ export default function BranchPerformancePage() {
             </div>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={selectedBranch.monthlyData}>
+                <ComposedChart data={selectedBranch?.monthlyData || []}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} />

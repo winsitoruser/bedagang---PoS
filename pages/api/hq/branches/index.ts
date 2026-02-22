@@ -55,31 +55,54 @@ async function getBranches(req: NextApiRequest, res: NextApiResponse) {
       offset
     });
 
-    const branches = rows.map((branch: any) => ({
-      id: branch.id,
-      code: branch.code,
-      name: branch.name,
-      type: branch.type || 'branch',
-      address: branch.address,
-      city: branch.city,
-      province: branch.province,
-      phone: branch.phone,
-      email: branch.email,
-      isActive: branch.isActive,
-      manager: branch.manager ? {
-        id: branch.manager.id,
-        name: branch.manager.name,
-        email: branch.manager.email,
-        phone: branch.manager.phone
-      } : null,
-      stats: {
-        employeeCount: 0,
-        todaySales: 0,
-        monthSales: 0,
-        lowStockItems: 0
-      },
-      createdAt: branch.createdAt,
-      updatedAt: branch.updatedAt
+    // Get setup status for each branch
+    let BranchSetup: any = null;
+    try {
+      BranchSetup = require('../../../../models').BranchSetup;
+    } catch (e) {}
+
+    const branches = await Promise.all(rows.map(async (branch: any) => {
+      let setupStatus = null;
+      let setupProgress = 0;
+      
+      if (BranchSetup) {
+        try {
+          const setup = await BranchSetup.findOne({ where: { branchId: branch.id } });
+          if (setup) {
+            setupStatus = setup.status;
+            setupProgress = setup.getProgress ? setup.getProgress() : 0;
+          }
+        } catch (e) {}
+      }
+
+      return {
+        id: branch.id,
+        code: branch.code,
+        name: branch.name,
+        type: branch.type || 'branch',
+        address: branch.address,
+        city: branch.city,
+        province: branch.province,
+        phone: branch.phone,
+        email: branch.email,
+        isActive: branch.isActive,
+        manager: branch.manager ? {
+          id: branch.manager.id,
+          name: branch.manager.name,
+          email: branch.manager.email,
+          phone: branch.manager.phone
+        } : null,
+        stats: {
+          employeeCount: 0,
+          todaySales: 0,
+          monthSales: 0,
+          lowStockItems: 0
+        },
+        setupStatus,
+        setupProgress,
+        createdAt: branch.createdAt,
+        updatedAt: branch.updatedAt
+      };
     }));
 
     return res.status(200).json({
@@ -110,6 +133,7 @@ async function createBranch(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
+    // Create the branch
     const branch = await Branch.create({
       code,
       name,
@@ -123,7 +147,101 @@ async function createBranch(req: NextApiRequest, res: NextApiResponse) {
       isActive: true
     });
 
-    return res.status(201).json({ branch, message: 'Branch created successfully' });
+    const branchId = (branch as any).id;
+    const branchType = type || 'branch';
+    
+    // Initialize all branch services using the initialization service
+    let initResult = {
+      success: false,
+      initializedServices: [] as string[],
+      errors: [] as string[]
+    };
+
+    try {
+      const { initializeBranch } = require('../../../../lib/services/branchInitializationService');
+      
+      initResult = await initializeBranch({
+        branchId,
+        branchCode: code,
+        branchName: name,
+        branchType,
+        createdBy: managerId
+      });
+
+      console.log('Branch initialization result:', initResult);
+    } catch (initError: any) {
+      console.warn('Could not use initialization service, falling back to basic setup:', initError.message);
+      
+      // Fallback to basic initialization
+      try {
+        const { BranchSetup, BranchModule, Location, StoreSetting } = require('../../../../models');
+        
+        // Create setup record
+        if (BranchSetup) {
+          await BranchSetup.create({
+            branchId,
+            status: 'pending',
+            currentStep: 1
+          });
+          initResult.initializedServices.push('branch_setup');
+        }
+
+        // Enable default modules
+        if (BranchModule && BranchModule.enableDefaultModules) {
+          await BranchModule.enableDefaultModules(branchId);
+          initResult.initializedServices.push('modules');
+        }
+
+        // Create default location
+        if (Location) {
+          await Location.create({
+            branchId,
+            code: 'MAIN',
+            name: 'Lokasi Utama',
+            type: 'store',
+            isDefault: true,
+            isActive: true
+          });
+          initResult.initializedServices.push('locations');
+        }
+
+        // Create default settings
+        if (StoreSetting) {
+          const defaultSettings = [
+            { category: 'general', key: 'currency', value: 'IDR', dataType: 'string' },
+            { category: 'general', key: 'timezone', value: 'Asia/Jakarta', dataType: 'string' },
+            { category: 'pos', key: 'receipt_header', value: name, dataType: 'string' },
+            { category: 'pos', key: 'receipt_footer', value: 'Terima kasih atas kunjungan Anda', dataType: 'string' },
+            { category: 'pos', key: 'tax_enabled', value: 'true', dataType: 'boolean' },
+            { category: 'pos', key: 'tax_rate', value: '11', dataType: 'number' },
+            { category: 'inventory', key: 'low_stock_threshold', value: '10', dataType: 'number' },
+            { category: 'inventory', key: 'sync_from_hq', value: 'true', dataType: 'boolean' }
+          ];
+
+          for (const setting of defaultSettings) {
+            await StoreSetting.findOrCreate({
+              where: { branchId, category: setting.category, key: setting.key },
+              defaults: { ...setting, branchId }
+            });
+          }
+          initResult.initializedServices.push('store_settings');
+        }
+
+        initResult.success = true;
+      } catch (fallbackError: any) {
+        initResult.errors.push(fallbackError.message);
+      }
+    }
+
+    return res.status(201).json({ 
+      branch, 
+      message: 'Branch created successfully',
+      setupInitialized: initResult.success || initResult.initializedServices.length > 0,
+      initializedServices: initResult.initializedServices,
+      initializationErrors: initResult.errors,
+      redirectToSetup: true,
+      setupUrl: `/hq/branches/${branchId}/setup`
+    });
   } catch (error: any) {
     if (error.name === 'SequelizeUniqueConstraintError') {
       return res.status(400).json({ error: 'Branch code already exists' });

@@ -1,0 +1,561 @@
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import HQLayout from '../../../components/hq/HQLayout';
+import {
+  ClipboardList,
+  RefreshCw,
+  Download,
+  Search,
+  ChevronLeft,
+  Building2,
+  Warehouse,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Eye,
+  Plus,
+  X,
+  Calendar,
+  User,
+  FileText,
+  BarChart3,
+  AlertTriangle,
+  Play,
+  Pause
+} from 'lucide-react';
+
+interface StocktakeItem {
+  productId: string;
+  productName: string;
+  sku: string;
+  systemStock: number;
+  countedStock: number;
+  variance: number;
+  status: 'pending' | 'counted' | 'verified';
+}
+
+interface Stocktake {
+  id: string;
+  stocktakeNumber: string;
+  branch: { id: string; name: string; code: string };
+  type: 'full' | 'partial' | 'cycle';
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  scheduledDate: string;
+  startedAt?: string;
+  completedAt?: string;
+  totalItems: number;
+  countedItems: number;
+  varianceCount: number;
+  varianceValue: number;
+  assignedTo: string[];
+  createdBy: string;
+  notes?: string;
+}
+
+const mockStocktakes: Stocktake[] = [
+  {
+    id: '1', stocktakeNumber: 'SO-2026-0015',
+    branch: { id: '1', name: 'Gudang Pusat', code: 'WH-001' },
+    type: 'full', status: 'in_progress',
+    scheduledDate: '2026-02-22', startedAt: '2026-02-22T08:00:00',
+    totalItems: 1250, countedItems: 856, varianceCount: 23, varianceValue: -2450000,
+    assignedTo: ['Staff Gudang 1', 'Staff Gudang 2', 'Supervisor'],
+    createdBy: 'Admin HQ'
+  },
+  {
+    id: '2', stocktakeNumber: 'SO-2026-0014',
+    branch: { id: '3', name: 'Cabang Bandung', code: 'BR-002' },
+    type: 'partial', status: 'completed',
+    scheduledDate: '2026-02-21', startedAt: '2026-02-21T09:00:00', completedAt: '2026-02-21T14:00:00',
+    totalItems: 350, countedItems: 350, varianceCount: 8, varianceValue: -850000,
+    assignedTo: ['Manager Bandung', 'Staff 1'],
+    createdBy: 'Manager Bandung', notes: 'Stock opname kategori Bahan Pokok'
+  },
+  {
+    id: '3', stocktakeNumber: 'SO-2026-0013',
+    branch: { id: '4', name: 'Cabang Surabaya', code: 'BR-003' },
+    type: 'cycle', status: 'scheduled',
+    scheduledDate: '2026-02-25',
+    totalItems: 200, countedItems: 0, varianceCount: 0, varianceValue: 0,
+    assignedTo: ['Staff Surabaya'],
+    createdBy: 'Admin HQ', notes: 'Cycle count mingguan'
+  },
+  {
+    id: '4', stocktakeNumber: 'SO-2026-0012',
+    branch: { id: '2', name: 'Cabang Jakarta', code: 'HQ-001' },
+    type: 'full', status: 'completed',
+    scheduledDate: '2026-02-18', startedAt: '2026-02-18T08:00:00', completedAt: '2026-02-18T17:00:00',
+    totalItems: 856, countedItems: 856, varianceCount: 15, varianceValue: -1250000,
+    assignedTo: ['Manager Jakarta', 'Staff 1', 'Staff 2'],
+    createdBy: 'Admin HQ'
+  }
+];
+
+const branches = [
+  { id: '1', name: 'Gudang Pusat', code: 'WH-001' },
+  { id: '2', name: 'Cabang Jakarta', code: 'HQ-001' },
+  { id: '3', name: 'Cabang Bandung', code: 'BR-002' },
+  { id: '4', name: 'Cabang Surabaya', code: 'BR-003' },
+  { id: '5', name: 'Cabang Medan', code: 'BR-004' },
+  { id: '6', name: 'Cabang Yogyakarta', code: 'BR-005' }
+];
+
+export default function StocktakeManagement() {
+  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [stocktakes, setStocktakes] = useState<Stocktake[]>(mockStocktakes);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedStocktake, setSelectedStocktake] = useState<Stocktake | null>(null);
+  const [newStocktake, setNewStocktake] = useState({
+    branch: '',
+    type: 'full' as 'full' | 'partial' | 'cycle',
+    scheduledDate: '',
+    assignedTo: '',
+    notes: ''
+  });
+
+  const fetchStocktakes = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') params.append('status', statusFilter);
+      if (searchTerm) params.append('search', searchTerm);
+      
+      const response = await fetch(`/api/hq/inventory/stocktake?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setStocktakes(data.stocktakes || mockStocktakes);
+      }
+    } catch (error) {
+      console.error('Error fetching stocktakes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setMounted(true);
+    fetchStocktakes();
+  }, []);
+
+  if (!mounted) return null;
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'scheduled': return <span className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs"><Calendar className="w-3 h-3" />Scheduled</span>;
+      case 'in_progress': return <span className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs"><Play className="w-3 h-3" />In Progress</span>;
+      case 'completed': return <span className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs"><CheckCircle className="w-3 h-3" />Completed</span>;
+      case 'cancelled': return <span className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs"><XCircle className="w-3 h-3" />Cancelled</span>;
+      default: return null;
+    }
+  };
+
+  const getTypeBadge = (type: string) => {
+    switch (type) {
+      case 'full': return <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">Full Count</span>;
+      case 'partial': return <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs">Partial</span>;
+      case 'cycle': return <span className="px-2 py-1 bg-cyan-100 text-cyan-700 rounded text-xs">Cycle Count</span>;
+      default: return null;
+    }
+  };
+
+  const filteredStocktakes = stocktakes.filter(s => {
+    const matchesSearch = s.stocktakeNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         s.branch.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const stats = {
+    scheduled: stocktakes.filter(s => s.status === 'scheduled').length,
+    inProgress: stocktakes.filter(s => s.status === 'in_progress').length,
+    completed: stocktakes.filter(s => s.status === 'completed').length,
+    totalVariance: stocktakes.filter(s => s.status === 'completed').reduce((sum, s) => sum + s.varianceValue, 0)
+  };
+
+  return (
+    <HQLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/hq/inventory" className="p-2 hover:bg-gray-100 rounded-lg">
+              <ChevronLeft className="w-5 h-5" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Stock Opname</h1>
+              <p className="text-gray-500">Jadwal dan kelola stock opname seluruh cabang</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4" />
+              Jadwalkan Opname
+            </button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-700">{stats.scheduled}</p>
+                <p className="text-sm text-blue-600">Scheduled</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <Play className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-yellow-700">{stats.inProgress}</p>
+                <p className="text-sm text-yellow-600">In Progress</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-700">{stats.completed}</p>
+                <p className="text-sm text-green-600">Completed</p>
+              </div>
+            </div>
+          </div>
+          <div className={`border rounded-xl p-4 ${stats.totalVariance < 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stats.totalVariance < 0 ? 'bg-red-100' : 'bg-gray-100'}`}>
+                <BarChart3 className={`w-5 h-5 ${stats.totalVariance < 0 ? 'text-red-600' : 'text-gray-600'}`} />
+              </div>
+              <div>
+                <p className={`text-lg font-bold ${stats.totalVariance < 0 ? 'text-red-700' : 'text-gray-700'}`}>{formatCurrency(stats.totalVariance)}</p>
+                <p className={`text-sm ${stats.totalVariance < 0 ? 'text-red-600' : 'text-gray-600'}`}>Total Variance</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex-1 min-w-[250px]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cari nomor opname atau cabang..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            >
+              <option value="all">Semua Status</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Stocktake Table */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. Opname</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cabang</th>
+                <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tipe</th>
+                <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase">Progress</th>
+                <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase">Variance</th>
+                <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filteredStocktakes.map((stocktake) => (
+                <tr key={stocktake.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-4">
+                    <p className="font-medium text-blue-600">{stocktake.stocktakeNumber}</p>
+                    <p className="text-xs text-gray-500">By {stocktake.createdBy}</p>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-2">
+                      {stocktake.branch.code.startsWith('WH') ? (
+                        <Warehouse className="w-4 h-4 text-gray-500" />
+                      ) : (
+                        <Building2 className="w-4 h-4 text-gray-500" />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{stocktake.branch.name}</p>
+                        <p className="text-xs text-gray-500">{stocktake.branch.code}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 text-center">{getTypeBadge(stocktake.type)}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${stocktake.status === 'completed' ? 'bg-green-500' : 'bg-blue-500'}`}
+                          style={{ width: `${(stocktake.countedItems / stocktake.totalItems) * 100}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-gray-600">{stocktake.countedItems}/{stocktake.totalItems}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    {stocktake.varianceCount > 0 ? (
+                      <div>
+                        <p className={`font-medium ${stocktake.varianceValue < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {formatCurrency(stocktake.varianceValue)}
+                        </p>
+                        <p className="text-xs text-gray-500">{stocktake.varianceCount} items</p>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-4 text-center">{getStatusBadge(stocktake.status)}</td>
+                  <td className="px-5 py-4 text-sm text-gray-600">{formatDate(stocktake.scheduledDate)}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => { setSelectedStocktake(stocktake); setShowDetailModal(true); }}
+                        className="p-2 hover:bg-gray-100 rounded-lg text-gray-600"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      {stocktake.status === 'scheduled' && (
+                        <button className="p-2 hover:bg-green-100 rounded-lg text-green-600" title="Start">
+                          <Play className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Create Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl w-full max-w-lg">
+              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">Jadwalkan Stock Opname</h2>
+                <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cabang *</label>
+                  <select
+                    value={newStocktake.branch}
+                    onChange={(e) => setNewStocktake({ ...newStocktake, branch: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">Pilih Cabang</option>
+                    {branches.map(b => (
+                      <option key={b.id} value={b.code}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipe Opname *</label>
+                    <select
+                      value={newStocktake.type}
+                      onChange={(e) => setNewStocktake({ ...newStocktake, type: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="full">Full Count</option>
+                      <option value="partial">Partial</option>
+                      <option value="cycle">Cycle Count</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal *</label>
+                    <input
+                      type="date"
+                      value={newStocktake.scheduledDate}
+                      onChange={(e) => setNewStocktake({ ...newStocktake, scheduledDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
+                  <input
+                    type="text"
+                    value={newStocktake.assignedTo}
+                    onChange={(e) => setNewStocktake({ ...newStocktake, assignedTo: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    placeholder="Nama staff (pisahkan dengan koma)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+                  <textarea
+                    value={newStocktake.notes}
+                    onChange={(e) => setNewStocktake({ ...newStocktake, notes: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    rows={3}
+                    placeholder="Catatan atau instruksi khusus..."
+                  />
+                </div>
+              </div>
+              <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Batal
+                </button>
+                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  Jadwalkan
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Detail Modal */}
+        {showDetailModal && selectedStocktake && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">{selectedStocktake.stocktakeNumber}</h2>
+                  <p className="text-sm text-gray-500">{selectedStocktake.branch.name}</p>
+                </div>
+                <button onClick={() => setShowDetailModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="flex items-center gap-3">
+                  {getStatusBadge(selectedStocktake.status)}
+                  {getTypeBadge(selectedStocktake.type)}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-xs text-gray-500 mb-1">Progress</p>
+                    <p className="text-xl font-bold text-gray-900">{selectedStocktake.countedItems} / {selectedStocktake.totalItems}</p>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                      <div
+                        className="h-2 rounded-full bg-blue-500"
+                        style={{ width: `${(selectedStocktake.countedItems / selectedStocktake.totalItems) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div className={`rounded-lg p-4 ${selectedStocktake.varianceValue < 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
+                    <p className="text-xs text-gray-500 mb-1">Variance</p>
+                    <p className={`text-xl font-bold ${selectedStocktake.varianceValue < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                      {formatCurrency(selectedStocktake.varianceValue)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{selectedStocktake.varianceCount} items with variance</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-500">Scheduled Date</p>
+                    <p className="font-medium text-gray-900">{formatDate(selectedStocktake.scheduledDate)}</p>
+                  </div>
+                  {selectedStocktake.startedAt && (
+                    <div>
+                      <p className="text-gray-500">Started At</p>
+                      <p className="font-medium text-gray-900">{formatDateTime(selectedStocktake.startedAt)}</p>
+                    </div>
+                  )}
+                  {selectedStocktake.completedAt && (
+                    <div>
+                      <p className="text-gray-500">Completed At</p>
+                      <p className="font-medium text-gray-900">{formatDateTime(selectedStocktake.completedAt)}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-gray-500">Created By</p>
+                    <p className="font-medium text-gray-900">{selectedStocktake.createdBy}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">Assigned To</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedStocktake.assignedTo.map((person, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700">
+                        {person}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedStocktake.notes && (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-2">Notes</p>
+                    <p className="text-gray-700 bg-gray-50 rounded-lg p-3">{selectedStocktake.notes}</p>
+                  </div>
+                )}
+              </div>
+              <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Tutup
+                </button>
+                {selectedStocktake.status === 'completed' && (
+                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Download Report
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </HQLayout>
+  );
+}

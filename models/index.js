@@ -77,6 +77,13 @@ db.KitchenOrderItem = require('./KitchenOrderItem');
 db.KitchenInventoryItem = require('./KitchenInventoryItem');
 db.KitchenInventoryTransaction = require('./KitchenInventoryTransaction');
 
+// Branch Real-time Metrics
+db.BranchRealTimeMetrics = require('./BranchRealTimeMetrics');
+
+// Branch Setup & Onboarding
+db.BranchSetup = require('./BranchSetup');
+db.BranchModule = require('./BranchModule');
+
 // Admin Panel Models
 db.Partner = require('./Partner');
 db.SubscriptionPackage = require('./SubscriptionPackage');

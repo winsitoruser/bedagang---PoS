@@ -127,15 +127,6 @@ export default function ConsolidatedReport() {
   const [branchPerformance, setBranchPerformance] = useState<BranchPerformance[]>([]);
   const [period, setPeriod] = useState<'month' | 'quarter' | 'year'>('month');
 
-  useEffect(() => {
-    setMounted(true);
-    fetchData();
-  }, [period]);
-
-  if (!mounted) {
-    return null;
-  }
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -155,6 +146,15 @@ export default function ConsolidatedReport() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setMounted(true);
+    fetchData();
+  }, [period]);
+
+  if (!mounted) {
+    return null;
+  }
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000000) return `Rp ${(value / 1000000000).toFixed(2)}M`;

@@ -176,15 +176,6 @@ export default function ProductPricing() {
     region: ''
   });
 
-  useEffect(() => {
-    setMounted(true);
-    fetchData();
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -213,6 +204,15 @@ export default function ProductPricing() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setMounted(true);
+    fetchData();
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   const handleCreateTier = async () => {
     setSaving(true);
