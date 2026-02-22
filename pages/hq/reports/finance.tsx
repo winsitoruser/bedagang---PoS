@@ -75,15 +75,6 @@ export default function FinanceReport() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'month' | 'quarter' | 'year'>('month');
 
-  useEffect(() => {
-    setMounted(true);
-    fetchFinanceData();
-  }, [period]);
-
-  if (!mounted) {
-    return null;
-  }
-
   const fetchFinanceData = async () => {
     setLoading(true);
     try {
@@ -100,6 +91,15 @@ export default function FinanceReport() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setMounted(true);
+    fetchFinanceData();
+  }, [period]);
+
+  if (!mounted) {
+    return null;
+  }
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000000) return `Rp ${(value / 1000000000).toFixed(1)}M`;

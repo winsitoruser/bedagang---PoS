@@ -140,15 +140,6 @@ export default function ProductCategories() {
     isActive: true
   });
 
-  useEffect(() => {
-    setMounted(true);
-    fetchCategories();
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
   const fetchCategories = async () => {
     setLoading(true);
     try {
@@ -165,6 +156,15 @@ export default function ProductCategories() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setMounted(true);
+    fetchCategories();
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   const handleCreate = async () => {
     setSaving(true);

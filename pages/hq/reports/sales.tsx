@@ -149,6 +149,7 @@ export default function SalesReport() {
 
   useEffect(() => {
     setMounted(true);
+    loadMockData();
     fetchSalesData();
   }, [period, branchFilter]);
 

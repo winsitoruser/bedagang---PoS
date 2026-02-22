@@ -32,7 +32,19 @@ import {
   FileBarChart,
   AlertCircle,
   CheckCircle,
-  Clock
+  Clock,
+  UserCheck,
+  Target,
+  CalendarCheck,
+  Award,
+  Wallet,
+  Banknote,
+  PiggyBank,
+  Receipt,
+  CreditCard,
+  Calculator,
+  ArrowRightLeft,
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface HQLayoutProps {
@@ -62,12 +74,17 @@ const navigation: NavItem[] = [
     ]
   },
   { 
-    name: 'Produk & Menu', 
+    name: 'Inventory', 
     icon: Package,
     children: [
-      { name: 'Master Produk', href: '/hq/products', icon: Package },
-      { name: 'Harga & Tier', href: '/hq/products/pricing', icon: DollarSign },
-      { name: 'Kategori', href: '/hq/products/categories', icon: Layers },
+      { name: 'Dashboard', href: '/hq/inventory', icon: LayoutDashboard },
+      { name: 'Stok Global', href: '/hq/inventory/stock', icon: Package },
+      { name: 'Kategori Produk', href: '/hq/inventory/categories', icon: Layers },
+      { name: 'Harga & Pricing', href: '/hq/inventory/pricing', icon: DollarSign },
+      { name: 'Transfer Stok', href: '/hq/inventory/transfers', icon: ArrowRightLeft },
+      { name: 'Alerts', href: '/hq/inventory/alerts', icon: AlertCircle },
+      { name: 'Stock Opname', href: '/hq/inventory/stocktake', icon: ClipboardList },
+      { name: 'Penerimaan Barang', href: '/hq/inventory/receipts', icon: FileText },
     ]
   },
   { 
@@ -80,12 +97,45 @@ const navigation: NavItem[] = [
     ]
   },
   { 
+    name: 'Produk & Menu', 
+    icon: Package,
+    children: [
+      { name: 'Master Produk', href: '/hq/products', icon: Package },
+    ]
+  },
+  { 
     name: 'Pengguna', 
     icon: Users,
     children: [
       { name: 'Semua Pengguna', href: '/hq/users', icon: Users },
       { name: 'Role & Akses', href: '/hq/users/roles', icon: Shield },
       { name: 'Branch Manager', href: '/hq/users/managers', icon: UserCog },
+    ]
+  },
+  { 
+    name: 'HRIS', 
+    icon: UserCheck,
+    children: [
+      { name: 'Dashboard HRIS', href: '/hq/hris', icon: LayoutDashboard },
+      { name: 'KPI Karyawan', href: '/hq/hris/kpi', icon: Target },
+      { name: 'KPI Settings', href: '/hq/hris/kpi-settings', icon: Settings },
+      { name: 'Kehadiran', href: '/hq/hris/attendance', icon: CalendarCheck },
+      { name: 'Performance Review', href: '/hq/hris/performance', icon: Award },
+    ]
+  },
+  { 
+    name: 'Keuangan', 
+    icon: Wallet,
+    children: [
+      { name: 'Dashboard Keuangan', href: '/hq/finance', icon: LayoutDashboard },
+      { name: 'Analisis Revenue', href: '/hq/finance/revenue', icon: TrendingUp },
+      { name: 'Pengeluaran', href: '/hq/finance/expenses', icon: CreditCard },
+      { name: 'Laba Rugi', href: '/hq/finance/profit-loss', icon: FileSpreadsheet },
+      { name: 'Arus Kas', href: '/hq/finance/cash-flow', icon: ArrowRightLeft },
+      { name: 'Invoice', href: '/hq/finance/invoices', icon: FileText },
+      { name: 'Piutang & Hutang', href: '/hq/finance/accounts', icon: Receipt },
+      { name: 'Anggaran', href: '/hq/finance/budget', icon: PiggyBank },
+      { name: 'Pajak', href: '/hq/finance/tax', icon: Calculator },
     ]
   },
   { 
@@ -122,7 +172,7 @@ function HQLayoutContent({ children, title, subtitle }: HQLayoutProps) {
 
   useEffect(() => {
     setMounted(true);
-    setExpandedMenus(['Cabang', 'Produk & Menu', 'Supply Chain']);
+    setExpandedMenus(['Cabang', 'Produk & Menu', 'Supply Chain', 'Keuangan']);
     fetchNotifications();
   }, []);
 

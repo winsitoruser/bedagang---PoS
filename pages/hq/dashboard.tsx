@@ -311,10 +311,25 @@ const mockAlertsData: Alert[] = [
     }
 ];
 
+interface SalesTrendData {
+  date: string;
+  day: string;
+  sales: number;
+  transactions: number;
+}
+
+interface RegionData {
+  region: string;
+  sales: number;
+  branches: number;
+}
+
 export default function HQDashboard() {
   const [mounted, setMounted] = useState(false);
   const [branches, setBranches] = useState<BranchData[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [salesTrendData, setSalesTrendData] = useState<SalesTrendData[]>([]);
+  const [regionData, setRegionData] = useState<RegionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'year'>('today');
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
@@ -335,6 +350,18 @@ export default function HQDashboard() {
         const data = await response.json();
         setBranches(data.branches || mockBranchesData);
         setAlerts(data.alerts || mockAlertsData);
+        if (data.salesTrend) {
+          setSalesTrendData(data.salesTrend.map((t: SalesTrendData) => ({
+            ...t,
+            sales: t.sales / 1000000 // Convert to millions for chart
+          })));
+        }
+        if (data.regionPerformance) {
+          setRegionData(data.regionPerformance.map((r: RegionData) => ({
+            ...r,
+            sales: r.sales / 1000000 // Convert to millions
+          })));
+        }
       } else {
         setBranches(mockBranchesData);
         setAlerts(mockAlertsData);
@@ -419,7 +446,8 @@ export default function HQDashboard() {
     { name: 'Kiosk', value: branches.filter(b => b.type === 'kiosk').length }
   ].filter(d => d.value > 0);
 
-  const salesTrendData = [
+  // Use API data if available, otherwise use defaults
+  const fallbackSalesTrend = [
     { day: 'Sen', sales: 125 },
     { day: 'Sel', sales: 142 },
     { day: 'Rab', sales: 138 },
@@ -429,13 +457,16 @@ export default function HQDashboard() {
     { day: 'Min', sales: 154 }
   ];
 
-  const regionData = [
+  const fallbackRegionData = [
     { region: 'DKI Jakarta', sales: 53.5, branches: 2 },
     { region: 'Jawa Barat', sales: 32, branches: 2 },
     { region: 'Jawa Timur', sales: 28.5, branches: 1 },
     { region: 'Sumatera Utara', sales: 22, branches: 1 },
     { region: 'DI Yogyakarta', sales: 18.5, branches: 1 }
   ];
+
+  const chartSalesTrend = salesTrendData.length > 0 ? salesTrendData : fallbackSalesTrend;
+  const chartRegionData = regionData.length > 0 ? regionData : fallbackRegionData;
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000000) {
@@ -741,7 +772,7 @@ export default function HQDashboard() {
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={salesTrendData}>
+                <AreaChart data={chartSalesTrend}>
                   <defs>
                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
@@ -775,7 +806,7 @@ export default function HQDashboard() {
               <MapPin className="w-5 h-5 text-gray-400" />
             </div>
             <div className="space-y-4">
-              {regionData.map((region, index) => (
+              {chartRegionData.map((region, index) => (
                 <div key={region.region} className="flex items-center gap-4">
                   <div className="w-32 text-sm font-medium text-gray-700 truncate">{region.region}</div>
                   <div className="flex-1">
@@ -783,7 +814,7 @@ export default function HQDashboard() {
                       <div 
                         className="h-3 rounded-full transition-all duration-500"
                         style={{ 
-                          width: `${(region.sales / regionData[0].sales) * 100}%`,
+                          width: `${(region.sales / (chartRegionData[0]?.sales || 1)) * 100}%`,
                           backgroundColor: COLORS[index % COLORS.length]
                         }}
                       ></div>

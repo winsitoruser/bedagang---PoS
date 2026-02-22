@@ -70,15 +70,6 @@ export default function InventoryReport() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
-  useEffect(() => {
-    setMounted(true);
-    fetchStockData();
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
   const fetchStockData = async () => {
     setLoading(true);
     try {
@@ -95,6 +86,15 @@ export default function InventoryReport() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setMounted(true);
+    fetchStockData();
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000000) return `Rp ${(value / 1000000000).toFixed(1)}M`;

@@ -594,24 +594,24 @@ export default function AuditLogViewer() {
             {/* Header Info */}
             <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                {selectedLog.userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                {selectedLog?.userName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '-'}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900">{selectedLog.userName}</h3>
-                  <span className="px-2 py-0.5 bg-gray-200 rounded text-xs">{selectedLog.userRole}</span>
-                  {selectedLog.isHqIntervention && (
+                  <h3 className="font-semibold text-gray-900">{selectedLog?.userName}</h3>
+                  <span className="px-2 py-0.5 bg-gray-200 rounded text-xs">{selectedLog?.userRole}</span>
+                  {selectedLog?.isHqIntervention && (
                     <span className="flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
                       <Shield className="w-3 h-3" />
                       HQ Intervention
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-500 mt-1">{formatDate(selectedLog.createdAt)}</p>
+                <p className="text-sm text-gray-500 mt-1">{formatDate(selectedLog?.createdAt)}</p>
               </div>
-              <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium ${actionColors[selectedLog.action]}`}>
-                {actionIcons[selectedLog.action]}
-                {selectedLog.action}
+              <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium ${actionColors[selectedLog?.action] || ''}`}>
+                {actionIcons[selectedLog?.action]}
+                {selectedLog?.action}
               </span>
             </div>
 
@@ -620,44 +620,44 @@ export default function AuditLogViewer() {
               <h4 className="text-sm font-medium text-gray-500 mb-2">Resource yang Terpengaruh</h4>
               <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
                 <div className="p-2 bg-gray-100 rounded-lg">
-                  {resourceIcons[selectedLog.resource] || resourceIcons.default}
+                  {resourceIcons[selectedLog?.resource] || resourceIcons.default}
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{selectedLog.resourceName}</p>
-                  <p className="text-sm text-gray-500">{selectedLog.resource} • ID: {selectedLog.resourceId}</p>
+                  <p className="font-medium text-gray-900">{selectedLog?.resourceName}</p>
+                  <p className="text-sm text-gray-500">{selectedLog?.resource} • ID: {selectedLog?.resourceId}</p>
                 </div>
               </div>
             </div>
 
             {/* Target Branch */}
-            {selectedLog.targetBranchName && (
+            {selectedLog?.targetBranchName && (
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">Cabang Terkait</h4>
                 <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <Building2 className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-blue-800">{selectedLog.targetBranchName}</span>
+                  <span className="font-medium text-blue-800">{selectedLog?.targetBranchName}</span>
                 </div>
               </div>
             )}
 
             {/* Changes */}
-            {(selectedLog.oldValues || selectedLog.newValues) && (
+            {(selectedLog?.oldValues || selectedLog?.newValues) && (
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">Perubahan Data</h4>
                 <div className="grid grid-cols-2 gap-4">
-                  {selectedLog.oldValues && (
+                  {selectedLog?.oldValues && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                       <p className="text-xs font-medium text-red-600 mb-2">Nilai Sebelum</p>
                       <pre className="text-xs text-red-800 overflow-auto">
-                        {JSON.stringify(selectedLog.oldValues, null, 2)}
+                        {JSON.stringify(selectedLog?.oldValues, null, 2)}
                       </pre>
                     </div>
                   )}
-                  {selectedLog.newValues && (
+                  {selectedLog?.newValues && (
                     <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                       <p className="text-xs font-medium text-green-600 mb-2">Nilai Sesudah</p>
                       <pre className="text-xs text-green-800 overflow-auto">
-                        {JSON.stringify(selectedLog.newValues, null, 2)}
+                        {JSON.stringify(selectedLog?.newValues, null, 2)}
                       </pre>
                     </div>
                   )}

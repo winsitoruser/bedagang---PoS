@@ -237,7 +237,7 @@ export default function Suppliers() {
     setSaving(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     setSuppliers(prev => prev.map(s => 
-      s.id === selectedSupplier.id ? { ...s, ...formData } : s
+      s.id === selectedSupplier?.id ? { ...s, ...formData } : s
     ));
     setSaving(false);
     setShowEditModal(false);
@@ -245,7 +245,7 @@ export default function Suppliers() {
 
   const handleDelete = async () => {
     if (!selectedSupplier) return;
-    setSuppliers(prev => prev.filter(s => s.id !== selectedSupplier.id));
+    setSuppliers(prev => prev.filter(s => s.id !== selectedSupplier?.id));
     setShowDeleteConfirm(false);
     setSelectedSupplier(null);
   };
@@ -556,37 +556,37 @@ export default function Suppliers() {
             <div className="space-y-6">
               <div className="flex items-start justify-between">
                 <div>
-                  {renderStars(selectedSupplier.rating)}
+                  {renderStars(selectedSupplier?.rating || 0)}
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {selectedSupplier.categories.map(cat => (
+                    {selectedSupplier?.categories?.map(cat => (
                       <span key={cat} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
                         {cat}
                       </span>
                     ))}
                   </div>
                 </div>
-                <StatusBadge status={selectedSupplier.isActive ? 'active' : 'inactive'} />
+                <StatusBadge status={selectedSupplier?.isActive ? 'active' : 'inactive'} />
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm text-gray-500">Kontak Person</p>
-                    <p className="font-medium">{selectedSupplier.contactPerson}</p>
+                    <p className="font-medium">{selectedSupplier?.contactPerson || '-'}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-gray-400" />
-                    <span>{selectedSupplier.phone}</span>
+                    <span>{selectedSupplier?.phone || '-'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-gray-400" />
-                    <span>{selectedSupplier.email}</span>
+                    <span>{selectedSupplier?.email || '-'}</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
                     <div>
-                      <p>{selectedSupplier.address}</p>
-                      <p className="text-sm text-gray-500">{selectedSupplier.city}, {selectedSupplier.province}</p>
+                      <p>{selectedSupplier?.address}</p>
+                      <p className="text-sm text-gray-500">{selectedSupplier?.city}, {selectedSupplier?.province}</p>
                     </div>
                   </div>
                 </div>
@@ -594,25 +594,25 @@ export default function Suppliers() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-gray-50 rounded-lg p-3">
                       <p className="text-sm text-gray-500">Total PO</p>
-                      <p className="text-xl font-bold text-gray-900">{selectedSupplier.totalPO}</p>
+                      <p className="text-xl font-bold text-gray-900">{selectedSupplier?.totalPO || 0}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3">
                       <p className="text-sm text-gray-500">Total Nilai</p>
-                      <p className="text-lg font-bold text-gray-900">{formatCurrency(selectedSupplier.totalValue)}</p>
+                      <p className="text-lg font-bold text-gray-900">{formatCurrency(selectedSupplier?.totalValue || 0)}</p>
                     </div>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Payment Terms</p>
-                    <p className="font-medium">{selectedSupplier.paymentTerms}</p>
+                    <p className="font-medium">{selectedSupplier?.paymentTerms || '-'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Lead Time</p>
-                    <p className="font-medium">{selectedSupplier.leadTimeDays} hari</p>
+                    <p className="font-medium">{selectedSupplier?.leadTimeDays || 0} hari</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Order Terakhir</p>
                     <p className="font-medium">
-                      {selectedSupplier.lastOrderDate 
+                      {selectedSupplier?.lastOrderDate 
                         ? new Date(selectedSupplier.lastOrderDate).toLocaleDateString('id-ID')
                         : 'Belum ada order'}
                     </p>
@@ -620,10 +620,10 @@ export default function Suppliers() {
                 </div>
               </div>
 
-              {selectedSupplier.notes && (
+              {selectedSupplier?.notes && (
                 <div className="bg-yellow-50 rounded-lg p-4">
                   <p className="text-sm font-medium text-yellow-800">Catatan</p>
-                  <p className="text-yellow-700">{selectedSupplier.notes}</p>
+                  <p className="text-yellow-700">{selectedSupplier?.notes}</p>
                 </div>
               )}
             </div>

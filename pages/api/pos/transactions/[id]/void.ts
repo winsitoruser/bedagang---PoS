@@ -17,7 +17,9 @@ export default async function handler(
     }
 
     if (req.method === 'POST') {
-      const { transactionId, reason, approvedBy } = req.body;
+      const { id } = req.query;
+      const transactionId = id as string;
+      const { reason, approvedBy } = req.body;
 
       // Validation
       if (!transactionId || !reason) {
@@ -87,7 +89,7 @@ export default async function handler(
         });
 
         // Reverse stock movements
-        const [items] = await sequelize.query(`
+        const items = await sequelize.query(`
           SELECT product_id, quantity FROM pos_transaction_items
           WHERE transaction_id = :transactionId
         `, {
@@ -96,7 +98,7 @@ export default async function handler(
           transaction: transaction2
         });
 
-        for (const item of items) {
+        for (const item of items as any[]) {
           await sequelize.query(`
             UPDATE products SET
               stock = stock + :quantity,
@@ -156,7 +158,7 @@ export default async function handler(
             oldValues: JSON.stringify({ status: 'completed' }),
             newValues: JSON.stringify({ status: 'voided', reason }),
             description: `Voided transaction ${transaction.transaction_number}. Reason: ${reason}`,
-            ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+            ipAddress: req.headers['x-forwarded-for'] || req.socket?.remoteAddress,
             userAgent: req.headers['user-agent'],
             tenantId: session.user.tenantId
           },
@@ -192,70 +194,25 @@ export default async function handler(
           alert: {
             severity: 'high',
             category: 'fraud_detection',
-              requiresAttention: parseFloat(transaction.total) > 1000000, // Alert if > 1M
-              suspicious: reason.toLowerCase().includes('error') || 
-                         reason.toLowerCase().includes('wrong') ||
-                         parseFloat(transaction.total) > 5000000 // Suspicious if > 5M
-          },
-          metadata: {
-            ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-            userAgent: req.headers['user-agent']
+            requiresAttention: parseFloat(transaction.total) > 1000000,
+            suspicious: reason.toLowerCase().includes('error') || 
+                       reason.toLowerCase().includes('wrong') ||
+                       parseFloat(transaction.total) > 5000000
           }
         };
 
-        // Use centralized webhook dispatcher
+        // Trigger webhooks
         try {
-          const dispatchResponse = await fetch(`${req.headers.origin}/api/webhooks/dispatch`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Cookie': req.headers.cookie || ''
-            },
-            body: JSON.stringify({
-              eventType: 'transaction_voided',
-              data: webhookPayload,
-              priority: webhookPayload.alert.suspicious ? 'critical' : 'high',
-              targetBranches: 'all',
-              channels: ['webhook', 'dashboard', 'whatsapp']
-            })
-          });
-
-          if (!dispatchResponse.ok) {
-            console.error('Failed to dispatch webhook:', await dispatchResponse.text());
-          }
-        } catch (error) {
-          console.error('Webhook dispatch error:', error);
-        }
-
-        // Fallback: Trigger webhook directly if dispatcher fails
-        await webhookService.triggerWebhooks(
-          'transaction_voided',
-          webhookPayload,
-          session.user.tenantId,
-          null, // Send to all branches
-          session.user.id
-        );
-
-        // Send additional alert to specific channels if suspicious
-        if (webhookPayload.alert.suspicious || webhookPayload.alert.requiresAttention) {
           await webhookService.triggerWebhooks(
-            'suspicious_activity',
-            {
-              ...webhookPayload,
-              alert: {
-                ...webhookPayload.alert,
-                message: `Suspicious void detected at ${transaction.branch_name}. Amount: Rp ${parseFloat(transaction.total).toLocaleString('id-ID')}`,
-                requiresImmediateAction: webhookPayload.alert.suspicious
-              }
-            },
+            'transaction_voided',
+            webhookPayload,
             session.user.tenantId,
             null,
             session.user.id
           );
+        } catch (error) {
+          console.error('Webhook trigger error:', error);
         }
-
-        // Send WhatsApp notification if configured
-        await sendWhatsAppNotification(webhookPayload, session.user.tenantId);
 
         return res.status(200).json({
           success: true,
@@ -274,20 +231,11 @@ export default async function handler(
       }
 
     } else if (req.method === 'GET') {
-      // Get recent voided transactions
-      const {
-        page = 1,
-        limit = 20,
-        branchId,
-        startDate,
-        endDate,
-        suspiciousOnly = false
-      } = req.query;
-
+      // Get voided transactions
+      const { page = 1, limit = 20, branchId, startDate, endDate } = req.query;
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-      // Build WHERE clause
-      let whereConditions = ['pt.tenant_id = :tenantId', 'pt.status = \'voided\''];
+      let whereConditions = ['pt.tenant_id = :tenantId', "pt.status = 'voided'"];
       let queryParams: any = { tenantId: session.user.tenantId };
 
       if (branchId && branchId !== 'all') {
@@ -305,33 +253,20 @@ export default async function handler(
         queryParams.endDate = endDate;
       }
 
-      if (suspiciousOnly === 'true') {
-        whereConditions.push(`(
-          pt.total > 1000000 OR
-          LOWER(pt.void_reason) LIKE '%error%' OR
-          LOWER(pt.void_reason) LIKE '%wrong%' OR
-          pt.total > 5000000
-        )`);
-      }
-
       const whereClause = whereConditions.join(' AND ');
 
-      // Get voided transactions
       const voidedTransactions = await sequelize.query(`
         SELECT 
           pt.*,
           b.name as branch_name,
           b.code as branch_code,
           cashier.name as cashier_name,
-          voider.name as voided_by_name,
-          COUNT(pti.id) as item_count
+          voider.name as voided_by_name
         FROM pos_transactions pt
         JOIN branches b ON pt.branch_id = b.id
         LEFT JOIN users cashier ON pt.cashier_id = cashier.id
         LEFT JOIN users voider ON pt.voided_by = voider.id
-        LEFT JOIN pos_transaction_items pti ON pt.id = pti.transaction_id
         WHERE ${whereClause}
-        GROUP BY pt.id, b.name, b.code, cashier.name, voider.name
         ORDER BY pt.voided_at DESC
         LIMIT :limit OFFSET :offset
       `, {
@@ -343,40 +278,9 @@ export default async function handler(
         type: QueryTypes.SELECT
       });
 
-      // Count total
-      const [countResult] = await sequelize.query(`
-        SELECT COUNT(*) as total
-        FROM pos_transactions pt
-        WHERE ${whereClause}
-      `, {
-        replacements: queryParams,
-        type: QueryTypes.SELECT
-      });
-
-      // Mark suspicious transactions
-      const transactionsWithFlags = voidedTransactions.map(t => ({
-        ...t,
-        isSuspicious: parseFloat(t.total) > 5000000 || 
-                      t.void_reason?.toLowerCase().includes('error') ||
-                      t.void_reason?.toLowerCase().includes('wrong'),
-        requiresAttention: parseFloat(t.total) > 1000000,
-        total: parseFloat(t.total)
-      }));
-
       return res.status(200).json({
         success: true,
-        data: transactionsWithFlags,
-        pagination: {
-          total: parseInt(countResult.total),
-          page: parseInt(page as string),
-          limit: parseInt(limit as string),
-          totalPages: Math.ceil(parseInt(countResult.total) / parseInt(limit as string))
-        },
-        summary: {
-          totalVoided: parseInt(countResult.total),
-          suspiciousCount: transactionsWithFlags.filter(t => t.isSuspicious).length,
-          highValueCount: transactionsWithFlags.filter(t => t.requiresAttention).length
-        }
+        data: voidedTransactions
       });
 
     } else {
@@ -394,18 +298,4 @@ export default async function handler(
       message: error.message
     });
   }
-}
-
-// Send WhatsApp notification (placeholder)
-async function sendWhatsAppNotification(payload: any, tenantId: string) {
-  // This would integrate with WhatsApp Business API
-  // For now, just log the notification
-  console.log('WhatsApp notification sent:', {
-    tenantId,
-    type: payload.type,
-    message: `🚨 Void Alert: ${payload.transaction.number} at ${payload.transaction.branch.name}`,
-    amount: `Rp ${payload.transaction.total.toLocaleString('id-ID')}`,
-    reason: payload.void.reason,
-    suspicious: payload.alert.suspicious
-  });
 }

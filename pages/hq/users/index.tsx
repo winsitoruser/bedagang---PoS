@@ -651,16 +651,16 @@ export default function UserManagement() {
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                {selectedUser.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                {selectedUser?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '-'}
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">{selectedUser.name}</h3>
-                <p className="text-gray-500">{selectedUser.email}</p>
+                <h3 className="text-lg font-semibold text-gray-900">{selectedUser?.name}</h3>
+                <p className="text-gray-500">{selectedUser?.email}</p>
                 <div className="flex gap-2 mt-2">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${roleColors[selectedUser.role]}`}>
-                    {roleLabels[selectedUser.role]}
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${roleColors[selectedUser?.role] || ''}`}>
+                    {roleLabels[selectedUser?.role] || '-'}
                   </span>
-                  <StatusBadge status={selectedUser.isActive ? 'active' : 'inactive'} />
+                  <StatusBadge status={selectedUser?.isActive ? 'active' : 'inactive'} />
                 </div>
               </div>
             </div>
@@ -670,21 +670,21 @@ export default function UserManagement() {
                 <Phone className="w-5 h-5 text-gray-400" />
                 <div>
                   <p className="text-sm text-gray-500">Telepon</p>
-                  <p className="font-medium">{selectedUser.phone}</p>
+                  <p className="font-medium">{selectedUser?.phone || '-'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 py-2 border-b border-gray-100">
                 <Building2 className="w-5 h-5 text-gray-400" />
                 <div>
                   <p className="text-sm text-gray-500">Cabang</p>
-                  <p className="font-medium">{selectedUser.branchName || 'Semua Cabang'}</p>
+                  <p className="font-medium">{selectedUser?.branchName || 'Semua Cabang'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 py-2 border-b border-gray-100">
                 <CheckCircle className="w-5 h-5 text-gray-400" />
                 <div>
                   <p className="text-sm text-gray-500">Login Terakhir</p>
-                  <p className="font-medium">{formatDate(selectedUser.lastLogin)}</p>
+                  <p className="font-medium">{formatDate(selectedUser?.lastLogin)}</p>
                 </div>
               </div>
             </div>
@@ -700,11 +700,11 @@ export default function UserManagement() {
               <button
                 onClick={() => { setShowViewModal(false); setShowToggleConfirm(true); }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
-                  selectedUser.isActive ? 'bg-orange-100 hover:bg-orange-200 text-orange-700' : 'bg-green-100 hover:bg-green-200 text-green-700'
+                  selectedUser?.isActive ? 'bg-orange-100 hover:bg-orange-200 text-orange-700' : 'bg-green-100 hover:bg-green-200 text-green-700'
                 }`}
               >
-                {selectedUser.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                {selectedUser.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                {selectedUser?.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                {selectedUser?.isActive ? 'Nonaktifkan' : 'Aktifkan'}
               </button>
             </div>
           </div>

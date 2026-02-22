@@ -1,0 +1,587 @@
+import React, { useState, useEffect } from 'react';
+import HQLayout from '../../../components/hq/HQLayout';
+import Link from 'next/link';
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  ArrowRightLeft,
+  RefreshCw,
+  Download,
+  ChevronLeft,
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  Building2,
+  Calendar,
+  Filter,
+  Plus,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  BanknoteIcon,
+  CreditCard,
+  Landmark
+} from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
+
+interface CashFlowSummary {
+  openingBalance: number;
+  closingBalance: number;
+  netChange: number;
+  cashInflow: number;
+  cashOutflow: number;
+  operatingCashFlow: number;
+  investingCashFlow: number;
+  financingCashFlow: number;
+  freeCashFlow: number;
+}
+
+interface CashFlowItem {
+  id: string;
+  date: string;
+  description: string;
+  category: string;
+  type: 'inflow' | 'outflow' | 'transfer';
+  source: string;
+  destination: string;
+  amount: number;
+  status: 'completed' | 'pending' | 'scheduled';
+  reference: string;
+}
+
+interface BankAccount {
+  id: string;
+  name: string;
+  bank: string;
+  accountNumber: string;
+  type: 'checking' | 'savings' | 'petty_cash';
+  balance: number;
+  currency: string;
+}
+
+interface CashForecast {
+  date: string;
+  projected: number;
+  actual?: number;
+  variance?: number;
+}
+
+const mockSummary: CashFlowSummary = {
+  openingBalance: 980000000,
+  closingBalance: 1250000000,
+  netChange: 270000000,
+  cashInflow: 4350000000,
+  cashOutflow: 4080000000,
+  operatingCashFlow: 850000000,
+  investingCashFlow: -150000000,
+  financingCashFlow: -430000000,
+  freeCashFlow: 700000000
+};
+
+const mockCashFlowItems: CashFlowItem[] = [
+  { id: '1', date: '2026-02-22', description: 'Penjualan Harian - All Branches', category: 'Operating', type: 'inflow', source: 'Sales', destination: 'BCA Main', amount: 185000000, status: 'completed', reference: 'TRX-20260222-001' },
+  { id: '2', date: '2026-02-22', description: 'Pembayaran Supplier PT Sukses', category: 'Operating', type: 'outflow', source: 'BCA Main', destination: 'PT Sukses Makmur', amount: 75000000, status: 'completed', reference: 'PAY-20260222-001' },
+  { id: '3', date: '2026-02-22', description: 'Transfer ke Cabang Bandung', category: 'Internal', type: 'transfer', source: 'BCA Main', destination: 'BCA Bandung', amount: 50000000, status: 'pending', reference: 'TRF-20260222-001' },
+  { id: '4', date: '2026-02-21', description: 'Pembayaran Gaji Karyawan', category: 'Operating', type: 'outflow', source: 'Mandiri Payroll', destination: 'Employees', amount: 150000000, status: 'completed', reference: 'PAY-20260221-001' },
+  { id: '5', date: '2026-02-21', description: 'Penerimaan Piutang Customer', category: 'Operating', type: 'inflow', source: 'PT ABC Corp', destination: 'BCA Main', amount: 45000000, status: 'completed', reference: 'RCV-20260221-001' },
+  { id: '6', date: '2026-02-20', description: 'Pembayaran Cicilan Bank', category: 'Financing', type: 'outflow', source: 'BCA Main', destination: 'Bank Mandiri Loan', amount: 35000000, status: 'completed', reference: 'PAY-20260220-001' },
+  { id: '7', date: '2026-02-20', description: 'Pembelian Equipment Kitchen', category: 'Investing', type: 'outflow', source: 'BCA Main', destination: 'CV Peralatan Dapur', amount: 25000000, status: 'completed', reference: 'PAY-20260220-002' },
+  { id: '8', date: '2026-02-25', description: 'Scheduled: Tagihan Listrik', category: 'Operating', type: 'outflow', source: 'BCA Main', destination: 'PLN', amount: 45000000, status: 'scheduled', reference: 'SCH-20260225-001' }
+];
+
+const mockBankAccounts: BankAccount[] = [
+  { id: '1', name: 'BCA Main Account', bank: 'BCA', accountNumber: '123-456-7890', type: 'checking', balance: 850000000, currency: 'IDR' },
+  { id: '2', name: 'Mandiri Payroll', bank: 'Mandiri', accountNumber: '987-654-3210', type: 'checking', balance: 250000000, currency: 'IDR' },
+  { id: '3', name: 'BCA Savings', bank: 'BCA', accountNumber: '111-222-3333', type: 'savings', balance: 120000000, currency: 'IDR' },
+  { id: '4', name: 'Petty Cash HQ', bank: '-', accountNumber: '-', type: 'petty_cash', balance: 15000000, currency: 'IDR' },
+  { id: '5', name: 'Petty Cash Branches', bank: '-', accountNumber: '-', type: 'petty_cash', balance: 15000000, currency: 'IDR' }
+];
+
+const mockForecast: CashForecast[] = [
+  { date: 'Week 1', projected: 1100000000, actual: 1120000000, variance: 20000000 },
+  { date: 'Week 2', projected: 1150000000, actual: 1180000000, variance: 30000000 },
+  { date: 'Week 3', projected: 1200000000, actual: 1210000000, variance: 10000000 },
+  { date: 'Week 4', projected: 1250000000, actual: 1250000000, variance: 0 },
+  { date: 'Week 5', projected: 1300000000 },
+  { date: 'Week 6', projected: 1350000000 }
+];
+
+const formatCurrency = (value: number) => {
+  if (Math.abs(value) >= 1000000000) {
+    return `Rp ${(value / 1000000000).toFixed(2)}M`;
+  } else if (Math.abs(value) >= 1000000) {
+    return `Rp ${(value / 1000000).toFixed(1)}Jt`;
+  }
+  return `Rp ${value.toLocaleString('id-ID')}`;
+};
+
+export default function CashFlowManagement() {
+  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
+  const [summary, setSummary] = useState<CashFlowSummary>(mockSummary);
+  const [cashFlowItems, setCashFlowItems] = useState<CashFlowItem[]>(mockCashFlowItems);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(mockBankAccounts);
+  const [forecast, setForecast] = useState<CashForecast[]>(mockForecast);
+  const [viewMode, setViewMode] = useState<'overview' | 'transactions' | 'accounts' | 'forecast'>('overview');
+  const [filterType, setFilterType] = useState<'all' | 'inflow' | 'outflow' | 'transfer'>('all');
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/hq/finance/cash-flow?period=${period}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSummary(data.summary || mockSummary);
+        setCashFlowItems(data.items || mockCashFlowItems);
+        setBankAccounts(data.accounts || mockBankAccounts);
+        setForecast(data.forecast || mockForecast);
+      }
+    } catch (error) {
+      console.error('Error fetching cash flow data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setMounted(true);
+    fetchData();
+  }, [period]);
+
+  if (!mounted) return null;
+
+  const cashFlowChartOptions: ApexCharts.ApexOptions = {
+    chart: { type: 'bar', toolbar: { show: false }, stacked: true },
+    plotOptions: { bar: { borderRadius: 4, columnWidth: '60%' } },
+    colors: ['#10B981', '#EF4444'],
+    xaxis: { categories: ['Week 1', 'Week 2', 'Week 3', 'Week 4'] },
+    yaxis: { labels: { formatter: (val) => formatCurrency(Math.abs(val) * 1000000) } },
+    legend: { position: 'top' },
+    tooltip: { y: { formatter: (val) => formatCurrency(Math.abs(val) * 1000000) } }
+  };
+
+  const cashFlowChartSeries = [
+    { name: 'Cash In', data: [980, 1050, 1120, 1200] },
+    { name: 'Cash Out', data: [-850, -920, -980, -1050] }
+  ];
+
+  const balanceTrendOptions: ApexCharts.ApexOptions = {
+    chart: { type: 'area', toolbar: { show: false } },
+    stroke: { curve: 'smooth', width: 2 },
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 } },
+    colors: ['#3B82F6'],
+    xaxis: { categories: ['1 Feb', '5 Feb', '10 Feb', '15 Feb', '20 Feb', '22 Feb'] },
+    yaxis: { labels: { formatter: (val) => formatCurrency(val * 1000000) } }
+  };
+
+  const balanceTrendSeries = [{ name: 'Balance', data: [980, 1020, 1080, 1150, 1200, 1250] }];
+
+  const cashFlowBreakdownOptions: ApexCharts.ApexOptions = {
+    chart: { type: 'bar', toolbar: { show: false } },
+    plotOptions: { bar: { horizontal: true, borderRadius: 4, distributed: true } },
+    colors: ['#10B981', '#EF4444', '#F59E0B'],
+    xaxis: { labels: { formatter: (val) => formatCurrency(Math.abs(Number(val)) * 1000000) } },
+    legend: { show: false }
+  };
+
+  const cashFlowBreakdownSeries = [{
+    name: 'Amount',
+    data: [
+      { x: 'Operating', y: 850 },
+      { x: 'Investing', y: -150 },
+      { x: 'Financing', y: -430 }
+    ]
+  }];
+
+  const forecastChartOptions: ApexCharts.ApexOptions = {
+    chart: { type: 'line', toolbar: { show: false } },
+    stroke: { curve: 'smooth', width: [2, 2], dashArray: [0, 5] },
+    colors: ['#3B82F6', '#10B981'],
+    xaxis: { categories: forecast.map(f => f.date) },
+    yaxis: { labels: { formatter: (val) => formatCurrency(val) } },
+    legend: { position: 'top' }
+  };
+
+  const forecastChartSeries = [
+    { name: 'Projected', data: forecast.map(f => f.projected) },
+    { name: 'Actual', data: forecast.map(f => f.actual || null) }
+  ];
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <span className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs"><CheckCircle className="w-3 h-3" />Completed</span>;
+      case 'pending':
+        return <span className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs"><Clock className="w-3 h-3" />Pending</span>;
+      case 'scheduled':
+        return <span className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs"><Calendar className="w-3 h-3" />Scheduled</span>;
+      default:
+        return null;
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'inflow':
+        return <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center"><ArrowDownRight className="w-4 h-4 text-green-600" /></div>;
+      case 'outflow':
+        return <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center"><ArrowUpRight className="w-4 h-4 text-red-600" /></div>;
+      case 'transfer':
+        return <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center"><ArrowRightLeft className="w-4 h-4 text-blue-600" /></div>;
+      default:
+        return null;
+    }
+  };
+
+  const getAccountIcon = (type: string) => {
+    switch (type) {
+      case 'checking':
+        return <CreditCard className="w-5 h-5 text-blue-600" />;
+      case 'savings':
+        return <Landmark className="w-5 h-5 text-green-600" />;
+      case 'petty_cash':
+        return <BanknoteIcon className="w-5 h-5 text-yellow-600" />;
+      default:
+        return <Wallet className="w-5 h-5 text-gray-600" />;
+    }
+  };
+
+  const totalBankBalance = bankAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const filteredItems = filterType === 'all' ? cashFlowItems : cashFlowItems.filter(item => item.type === filterType);
+
+  return (
+    <HQLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/hq/finance" className="p-2 hover:bg-gray-100 rounded-lg">
+              <ChevronLeft className="w-5 h-5" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Cash Flow Management</h1>
+              <p className="text-gray-500">Monitor dan kelola arus kas perusahaan</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as any)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            >
+              <option value="week">Minggu Ini</option>
+              <option value="month">Bulan Ini</option>
+              <option value="quarter">Kuartal Ini</option>
+              <option value="year">Tahun Ini</option>
+            </select>
+            <button
+              onClick={fetchData}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <Plus className="w-4 h-4" />
+              New Transaction
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-5 gap-4">
+          <div className="bg-white rounded-xl p-5 border border-gray-200">
+            <p className="text-gray-500 text-sm">Opening Balance</p>
+            <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.openingBalance)}</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-5 text-white">
+            <div className="flex items-center gap-2 mb-2">
+              <ArrowDownRight className="w-5 h-5 opacity-80" />
+              <p className="text-green-100 text-sm">Cash Inflow</p>
+            </div>
+            <p className="text-2xl font-bold">{formatCurrency(summary.cashInflow)}</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-5 text-white">
+            <div className="flex items-center gap-2 mb-2">
+              <ArrowUpRight className="w-5 h-5 opacity-80" />
+              <p className="text-red-100 text-sm">Cash Outflow</p>
+            </div>
+            <p className="text-2xl font-bold">{formatCurrency(summary.cashOutflow)}</p>
+          </div>
+
+          <div className="bg-white rounded-xl p-5 border border-gray-200">
+            <p className="text-gray-500 text-sm">Net Change</p>
+            <p className={`text-2xl font-bold ${summary.netChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {summary.netChange >= 0 ? '+' : ''}{formatCurrency(summary.netChange)}
+            </p>
+          </div>
+
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white">
+            <div className="flex items-center gap-2 mb-2">
+              <Wallet className="w-5 h-5 opacity-80" />
+              <p className="text-blue-100 text-sm">Closing Balance</p>
+            </div>
+            <p className="text-2xl font-bold">{formatCurrency(summary.closingBalance)}</p>
+          </div>
+        </div>
+
+        {/* Cash Flow Categories */}
+        <div className="grid grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl p-4 border border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Operating Cash Flow</p>
+                <p className="text-lg font-bold text-green-600">{formatCurrency(summary.operatingCashFlow)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-4 border border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Investing Cash Flow</p>
+                <p className="text-lg font-bold text-red-600">{formatCurrency(summary.investingCashFlow)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-4 border border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <Landmark className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Financing Cash Flow</p>
+                <p className="text-lg font-bold text-red-600">{formatCurrency(summary.financingCashFlow)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-4 border border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <BanknoteIcon className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Free Cash Flow</p>
+                <p className="text-lg font-bold text-green-600">{formatCurrency(summary.freeCashFlow)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* View Mode Tabs */}
+        <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
+          {[
+            { key: 'overview', label: 'Overview', icon: TrendingUp },
+            { key: 'transactions', label: 'Transactions', icon: ArrowRightLeft },
+            { key: 'accounts', label: 'Bank Accounts', icon: Landmark },
+            { key: 'forecast', label: 'Forecast', icon: Calendar }
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setViewMode(tab.key as any)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewMode === tab.key ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {viewMode === 'overview' && (
+          <div className="grid grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="font-semibold text-gray-900 mb-4">Weekly Cash Flow</h3>
+              <Chart options={cashFlowChartOptions} series={cashFlowChartSeries} type="bar" height={300} />
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="font-semibold text-gray-900 mb-4">Balance Trend</h3>
+              <Chart options={balanceTrendOptions} series={balanceTrendSeries} type="area" height={300} />
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="font-semibold text-gray-900 mb-4">Cash Flow by Activity</h3>
+              <Chart options={cashFlowBreakdownOptions} series={cashFlowBreakdownSeries} type="bar" height={200} />
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="font-semibold text-gray-900 mb-4">Bank Account Summary</h3>
+              <div className="space-y-3">
+                {bankAccounts.slice(0, 4).map((account) => (
+                  <div key={account.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-200">
+                        {getAccountIcon(account.type)}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">{account.name}</p>
+                        <p className="text-xs text-gray-500">{account.bank} {account.accountNumber !== '-' && `• ${account.accountNumber}`}</p>
+                      </div>
+                    </div>
+                    <p className="font-bold text-gray-900">{formatCurrency(account.balance)}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
+                <p className="font-medium text-gray-700">Total Balance</p>
+                <p className="text-xl font-bold text-blue-600">{formatCurrency(totalBankBalance)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {viewMode === 'transactions' && (
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {['all', 'inflow', 'outflow', 'transfer'].map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setFilterType(type as any)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filterType === type ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    {type === 'all' ? 'All' : type.charAt(0).toUpperCase() + type.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <button className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+                <Filter className="w-4 h-4" />
+                Filter
+              </button>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {filteredItems.map((item) => (
+                <div key={item.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
+                  <div className="flex items-center gap-4">
+                    {getTypeIcon(item.type)}
+                    <div>
+                      <p className="font-medium text-gray-900">{item.description}</p>
+                      <p className="text-xs text-gray-500">{item.date} • {item.reference} • {item.category}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className={`font-bold ${item.type === 'inflow' ? 'text-green-600' : item.type === 'outflow' ? 'text-red-600' : 'text-blue-600'}`}>
+                        {item.type === 'inflow' ? '+' : item.type === 'outflow' ? '-' : ''}{formatCurrency(item.amount)}
+                      </p>
+                      <p className="text-xs text-gray-500">{item.source} → {item.destination}</p>
+                    </div>
+                    {getStatusBadge(item.status)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {viewMode === 'accounts' && (
+          <div className="grid grid-cols-3 gap-4">
+            {bankAccounts.map((account) => (
+              <div key={account.id} className="bg-white rounded-xl border border-gray-200 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                    {getAccountIcon(account.type)}
+                  </div>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    account.type === 'checking' ? 'bg-blue-100 text-blue-700' :
+                    account.type === 'savings' ? 'bg-green-100 text-green-700' :
+                    'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {account.type === 'checking' ? 'Checking' : account.type === 'savings' ? 'Savings' : 'Petty Cash'}
+                  </span>
+                </div>
+                <h3 className="font-semibold text-gray-900">{account.name}</h3>
+                <p className="text-sm text-gray-500 mb-4">{account.bank} {account.accountNumber !== '-' && `• ${account.accountNumber}`}</p>
+                <div className="pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500">Current Balance</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(account.balance)}</p>
+                </div>
+              </div>
+            ))}
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Wallet className="w-6 h-6" />
+                </div>
+              </div>
+              <h3 className="font-semibold text-blue-100">Total All Accounts</h3>
+              <p className="text-sm text-blue-200 mb-4">{bankAccounts.length} accounts</p>
+              <div className="pt-4 border-t border-white/20">
+                <p className="text-xs text-blue-200">Combined Balance</p>
+                <p className="text-3xl font-bold">{formatCurrency(totalBankBalance)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {viewMode === 'forecast' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="font-semibold text-gray-900 mb-4">Cash Flow Forecast</h3>
+              <Chart options={forecastChartOptions} series={forecastChartSeries} type="line" height={350} />
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
+                    <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase">Projected</th>
+                    <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actual</th>
+                    <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase">Variance</th>
+                    <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {forecast.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-5 py-4 font-medium text-gray-900">{item.date}</td>
+                      <td className="px-5 py-4 text-right text-gray-600">{formatCurrency(item.projected)}</td>
+                      <td className="px-5 py-4 text-right text-gray-900">{item.actual ? formatCurrency(item.actual) : '-'}</td>
+                      <td className="px-5 py-4 text-right">
+                        {item.variance !== undefined ? (
+                          <span className={item.variance >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {item.variance >= 0 ? '+' : ''}{formatCurrency(item.variance)}
+                          </span>
+                        ) : '-'}
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        {item.actual ? (
+                          <span className="flex items-center justify-center gap-1 text-green-600 text-sm">
+                            <CheckCircle className="w-4 h-4" />
+                            Actual
+                          </span>
+                        ) : (
+                          <span className="flex items-center justify-center gap-1 text-blue-600 text-sm">
+                            <Clock className="w-4 h-4" />
+                            Projected
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </HQLayout>
+  );
+}

@@ -54,6 +54,8 @@ interface Branch {
     employeeCount: number;
     lowStockItems: number;
   };
+  setupStatus?: 'pending' | 'in_progress' | 'completed' | 'skipped' | null;
+  setupProgress?: number;
 }
 
 const mockBranches: Branch[] = [
@@ -223,9 +225,16 @@ export default function BranchManagement() {
         body: JSON.stringify(formData)
       });
       if (response.ok) {
+        const data = await response.json();
         setShowCreateModal(false);
         resetForm();
-        fetchBranches();
+        
+        // Redirect to setup wizard if available
+        if (data.redirectToSetup && data.setupUrl) {
+          window.location.href = data.setupUrl;
+        } else {
+          fetchBranches();
+        }
       }
     } catch (error) {
       console.error('Error creating branch:', error);
@@ -424,6 +433,34 @@ export default function BranchManagement() {
       )
     },
     {
+      key: 'setup',
+      header: 'Setup',
+      align: 'center',
+      width: '100px',
+      render: (_, branch) => {
+        if (!branch.setupStatus || branch.setupStatus === 'completed') {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+              <CheckCircle className="w-3 h-3" />
+              Siap
+            </span>
+          );
+        }
+        if (branch.setupStatus === 'pending' || branch.setupStatus === 'in_progress') {
+          return (
+            <button
+              onClick={(e) => { e.stopPropagation(); window.location.href = `/hq/branches/${branch.id}/setup`; }}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium hover:bg-yellow-200"
+            >
+              <Settings className="w-3 h-3" />
+              {branch.setupProgress || 0}%
+            </button>
+          );
+        }
+        return null;
+      }
+    },
+    {
       key: 'stats',
       header: 'Penjualan Hari Ini',
       align: 'right',
@@ -441,6 +478,13 @@ export default function BranchManagement() {
       width: '120px',
       render: (_, branch) => (
         <div className="flex items-center justify-center gap-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); window.location.href = `/hq/branches/${branch.id}`; }}
+            className="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg"
+            title="Monitor Realtime"
+          >
+            <TrendingUp className="w-4 h-4" />
+          </button>
           <button
             onClick={(e) => { e.stopPropagation(); setSelectedBranch(branch); setShowViewModal(true); }}
             className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
@@ -738,7 +782,7 @@ export default function BranchManagement() {
                     <User className="w-5 h-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-500">Manager</p>
-                      <p className="font-medium">{selectedBranch.manager.name}</p>
+                      <p className="font-medium">{selectedBranch.manager?.name || '-'}</p>
                     </div>
                   </div>
                 </div>
@@ -771,19 +815,19 @@ export default function BranchManagement() {
             <div className="grid grid-cols-4 gap-4">
               <div className="bg-blue-50 rounded-xl p-4">
                 <p className="text-sm text-blue-600">Penjualan Hari Ini</p>
-                <p className="text-xl font-bold text-blue-900">{formatCurrency(selectedBranch.stats.todaySales)}</p>
+                <p className="text-xl font-bold text-blue-900">{formatCurrency(selectedBranch.stats?.todaySales || 0)}</p>
               </div>
               <div className="bg-green-50 rounded-xl p-4">
                 <p className="text-sm text-green-600">Penjualan Bulan Ini</p>
-                <p className="text-xl font-bold text-green-900">{formatCurrency(selectedBranch.stats.monthSales)}</p>
+                <p className="text-xl font-bold text-green-900">{formatCurrency(selectedBranch.stats?.monthSales || 0)}</p>
               </div>
               <div className="bg-purple-50 rounded-xl p-4">
                 <p className="text-sm text-purple-600">Jumlah Karyawan</p>
-                <p className="text-xl font-bold text-purple-900">{selectedBranch.stats.employeeCount}</p>
+                <p className="text-xl font-bold text-purple-900">{selectedBranch.stats?.employeeCount || 0}</p>
               </div>
               <div className="bg-orange-50 rounded-xl p-4">
                 <p className="text-sm text-orange-600">Stok Rendah</p>
-                <p className="text-xl font-bold text-orange-900">{selectedBranch.stats.lowStockItems}</p>
+                <p className="text-xl font-bold text-orange-900">{selectedBranch.stats?.lowStockItems || 0}</p>
               </div>
             </div>
 

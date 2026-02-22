@@ -106,6 +106,9 @@ const statusMappings: Record<string, { variant: BadgeVariant; label: string }> =
 };
 
 export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
+  if (!status) {
+    return <Badge variant="default" size={size} dot>-</Badge>;
+  }
   const mapping = statusMappings[status.toLowerCase()] || { variant: 'default' as BadgeVariant, label: status };
   return (
     <Badge variant={mapping.variant} size={size} dot>

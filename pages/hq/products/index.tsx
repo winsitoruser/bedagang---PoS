@@ -236,7 +236,7 @@ export default function ProductManagement() {
       const response = await fetch(`/api/hq/products/${selectedProduct.id}/lock-price`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lock: !selectedProduct.pricing.isStandard })
+        body: JSON.stringify({ lock: !selectedProduct?.pricing?.isStandard })
       });
       if (response.ok) {
         setShowLockConfirm(false);
@@ -323,7 +323,7 @@ export default function ProductManagement() {
       align: 'center',
       render: (_, product) => (
         <div className="flex flex-col items-center gap-1">
-          {product.pricing.isStandard ? (
+          {product.pricing?.isStandard ? (
             <span className="flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
               <Lock className="w-3 h-3" />
               Terkunci
@@ -334,8 +334,8 @@ export default function ProductManagement() {
               Fleksibel
             </span>
           )}
-          {product.pricing.branchPrices.length > 0 && (
-            <span className="text-xs text-gray-500">{product.pricing.branchPrices.length} variasi</span>
+          {product.pricing?.branchPrices?.length > 0 && (
+            <span className="text-xs text-gray-500">{product.pricing?.branchPrices?.length} variasi</span>
           )}
         </div>
       )
@@ -389,12 +389,12 @@ export default function ProductManagement() {
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setSelectedProduct(product); setShowLockConfirm(true); }}
-            className={`p-2 rounded-lg ${product.pricing.isStandard 
+            className={`p-2 rounded-lg ${product.pricing?.isStandard 
               ? 'text-orange-600 hover:bg-orange-50' 
               : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50'}`}
-            title={product.pricing.isStandard ? 'Buka Kunci Harga' : 'Kunci Harga'}
+            title={product.pricing?.isStandard ? 'Buka Kunci Harga' : 'Kunci Harga'}
           >
-            {product.pricing.isStandard ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+            {product.pricing?.isStandard ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setSelectedProduct(product); setShowEditModal(true); }}
@@ -464,7 +464,7 @@ export default function ProductManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Harga Terkunci</p>
-                <p className="text-2xl font-bold text-orange-600">{products.filter(p => p.pricing.isStandard).length}</p>
+                <p className="text-2xl font-bold text-orange-600">{products.filter(p => p.pricing?.isStandard).length}</p>
               </div>
               <div className="p-3 bg-orange-100 rounded-xl">
                 <Lock className="w-6 h-6 text-orange-600" />
@@ -578,21 +578,21 @@ export default function ProductManagement() {
             </div>
 
             {/* Price Lock Status */}
-            <div className={`p-4 rounded-xl ${selectedProduct.pricing.isStandard ? 'bg-orange-50 border border-orange-200' : 'bg-green-50 border border-green-200'}`}>
+            <div className={`p-4 rounded-xl ${selectedProduct?.pricing?.isStandard ? 'bg-orange-50 border border-orange-200' : 'bg-green-50 border border-green-200'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {selectedProduct.pricing.isStandard ? (
+                  {selectedProduct?.pricing?.isStandard ? (
                     <Lock className="w-5 h-5 text-orange-600" />
                   ) : (
                     <Unlock className="w-5 h-5 text-green-600" />
                   )}
                   <div>
-                    <p className={`font-medium ${selectedProduct.pricing.isStandard ? 'text-orange-800' : 'text-green-800'}`}>
-                      {selectedProduct.pricing.isStandard ? 'Harga Terkunci (Standar Pusat)' : 'Harga Fleksibel'}
+                    <p className={`font-medium ${selectedProduct?.pricing?.isStandard ? 'text-orange-800' : 'text-green-800'}`}>
+                      {selectedProduct?.pricing?.isStandard ? 'Harga Terkunci (Standar Pusat)' : 'Harga Fleksibel'}
                     </p>
-                    <p className={`text-sm ${selectedProduct.pricing.isStandard ? 'text-orange-600' : 'text-green-600'}`}>
-                      {selectedProduct.pricing.isStandard 
-                        ? `Dikunci oleh ${selectedProduct.pricing.lockedBy} pada ${new Date(selectedProduct.pricing.lockedAt!).toLocaleDateString('id-ID')}`
+                    <p className={`text-sm ${selectedProduct?.pricing?.isStandard ? 'text-orange-600' : 'text-green-600'}`}>
+                      {selectedProduct?.pricing?.isStandard 
+                        ? `Dikunci oleh ${selectedProduct?.pricing?.lockedBy} pada ${selectedProduct?.pricing?.lockedAt ? new Date(selectedProduct.pricing.lockedAt).toLocaleDateString('id-ID') : '-'}`
                         : 'Branch Manager dapat menyesuaikan harga sesuai kebijakan cabang'
                       }
                     </p>
@@ -601,18 +601,18 @@ export default function ProductManagement() {
                 <button
                   onClick={() => { setShowViewModal(false); setShowLockConfirm(true); }}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
-                    selectedProduct.pricing.isStandard 
+                    selectedProduct?.pricing?.isStandard 
                       ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' 
                       : 'bg-green-100 text-green-700 hover:bg-green-200'
                   }`}
                 >
-                  {selectedProduct.pricing.isStandard ? 'Buka Kunci' : 'Kunci Harga'}
+                  {selectedProduct?.pricing?.isStandard ? 'Buka Kunci' : 'Kunci Harga'}
                 </button>
               </div>
             </div>
 
             {/* Branch Prices */}
-            {selectedProduct.pricing.branchPrices.length > 0 && (
+            {selectedProduct?.pricing?.branchPrices && selectedProduct.pricing.branchPrices.length > 0 && (
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Variasi Harga per Cabang</h4>
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -626,7 +626,7 @@ export default function ProductManagement() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {selectedProduct.pricing.branchPrices.map((bp) => (
+                      {selectedProduct?.pricing?.branchPrices?.map((bp) => (
                         <tr key={bp.branchId}>
                           <td className="px-4 py-3 font-medium">{bp.branchName}</td>
                           <td className="px-4 py-3 text-gray-500">{bp.priceTier || 'Standar'}</td>
@@ -742,11 +742,11 @@ export default function ProductManagement() {
               </div>
             </div>
 
-            <div className={`p-4 rounded-xl ${selectedProduct.pricing.isStandard ? 'bg-orange-50' : 'bg-blue-50'}`}>
+            <div className={`p-4 rounded-xl ${selectedProduct?.pricing?.isStandard ? 'bg-orange-50' : 'bg-blue-50'}`}>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  defaultChecked={selectedProduct.pricing.isStandard}
+                  defaultChecked={selectedProduct?.pricing?.isStandard}
                   className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                 />
                 <div>
@@ -764,13 +764,13 @@ export default function ProductManagement() {
         isOpen={showLockConfirm}
         onClose={() => { setShowLockConfirm(false); setSelectedProduct(null); }}
         onConfirm={handleLockPrice}
-        title={selectedProduct?.pricing.isStandard ? 'Buka Kunci Harga' : 'Kunci Harga'}
-        message={selectedProduct?.pricing.isStandard 
+        title={selectedProduct?.pricing?.isStandard ? 'Buka Kunci Harga' : 'Kunci Harga'}
+        message={selectedProduct?.pricing?.isStandard 
           ? `Apakah Anda yakin ingin membuka kunci harga "${selectedProduct?.name}"? Branch Manager akan dapat menyesuaikan harga produk ini.`
           : `Apakah Anda yakin ingin mengunci harga "${selectedProduct?.name}"? Hanya SUPER_ADMIN yang dapat mengubah harga produk ini.`
         }
-        confirmText={selectedProduct?.pricing.isStandard ? 'Buka Kunci' : 'Kunci Harga'}
-        variant={selectedProduct?.pricing.isStandard ? 'info' : 'warning'}
+        confirmText={selectedProduct?.pricing?.isStandard ? 'Buka Kunci' : 'Kunci Harga'}
+        variant={selectedProduct?.pricing?.isStandard ? 'info' : 'warning'}
         loading={actionLoading}
       />
 
