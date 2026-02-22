@@ -23,7 +23,34 @@ export interface ProductFilter {
   isToling?: boolean;
   supplierId?: string;
   shelfPositionId?: string;
+  branchId?: string;
+  aggregateAll?: boolean; // If true, aggregate data from all branches under partnerId
 }
+
+export interface UserContext {
+  userId: number;
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'BRANCH_MANAGER' | 'CASHIER' | 'STAFF';
+  branchId?: string;
+  partnerId?: string;
+  tenantId?: string;
+}
+
+export interface PriceUpdateData {
+  price?: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+  isStandard?: boolean;
+  priceTierId?: string;
+  requiresApproval?: boolean;
+}
+
+// Roles that can modify standard prices
+const STANDARD_PRICE_ROLES = ['SUPER_ADMIN', 'ADMIN'];
+
+// Validate if user can modify standard price
+const canModifyStandardPrice = (userRole: string): boolean => {
+  return STANDARD_PRICE_ROLES.includes(userRole);
+};
 
 // Helper function to create a timeout promise
 const createTimeout = (ms: number) => {
@@ -418,6 +445,282 @@ export const getTolingProducts = async (filter: ProductFilter = {}, tenantId?: s
   }
 };
 
+/**
+ * Update product price with role-based access control
+ * BRANCH_MANAGER cannot update prices marked as isStandard
+ */
+export const updateProductPrice = async (
+  priceId: number,
+  priceData: PriceUpdateData,
+  userContext: UserContext
+) => {
+  try {
+    const ProductPrice = sequelize.models.ProductPrice;
+    if (!ProductPrice) {
+      throw new Error('ProductPrice model not found in Sequelize');
+    }
+
+    // Get existing price record
+    const existingPrice = await ProductPrice.findByPk(priceId) as any;
+    if (!existingPrice) {
+      return { success: false, error: 'Price record not found' };
+    }
+
+    // Check if price is standard and user is BRANCH_MANAGER
+    if (existingPrice.is_standard && !canModifyStandardPrice(userContext.role)) {
+      logger.warn(`User ${userContext.userId} (${userContext.role}) attempted to modify standard price ${priceId}`);
+      return {
+        success: false,
+        error: 'UNAUTHORIZED: Harga standar dari Pusat tidak dapat diubah oleh Branch Manager. Hubungi SUPER_ADMIN untuk perubahan harga.',
+        code: 'STANDARD_PRICE_LOCKED'
+      };
+    }
+
+    // If trying to set isStandard, only SUPER_ADMIN can do it
+    if (priceData.isStandard !== undefined && priceData.isStandard === true) {
+      if (userContext.role !== 'SUPER_ADMIN') {
+        return {
+          success: false,
+          error: 'UNAUTHORIZED: Hanya SUPER_ADMIN yang dapat mengunci harga sebagai standar.',
+          code: 'INSUFFICIENT_PERMISSION'
+        };
+      }
+      // Set locked_by and locked_at when marking as standard
+      (priceData as any).locked_by = userContext.userId;
+      (priceData as any).locked_at = new Date();
+    }
+
+    // If price requires approval and user is BRANCH_MANAGER, create approval request
+    if (existingPrice.requires_approval && userContext.role === 'BRANCH_MANAGER') {
+      // Create price change request instead of direct update
+      const PriceChangeRequest = sequelize.models.PriceChangeRequest;
+      if (PriceChangeRequest) {
+        await PriceChangeRequest.create({
+          product_price_id: priceId,
+          requested_by: userContext.userId,
+          branch_id: userContext.branchId,
+          current_price: existingPrice.price,
+          requested_price: priceData.price,
+          status: 'pending',
+          request_reason: 'Price change request from branch'
+        });
+        return {
+          success: true,
+          message: 'Permintaan perubahan harga telah dikirim ke Pusat untuk approval.',
+          requiresApproval: true
+        };
+      }
+    }
+
+    // Perform the update
+    await existingPrice.update({
+      ...priceData,
+      is_standard: priceData.isStandard,
+      price_tier_id: priceData.priceTierId,
+      requires_approval: priceData.requiresApproval
+    });
+
+    // Log the price change for audit
+    await logPriceChange(priceId, existingPrice.price, priceData.price, userContext);
+
+    return {
+      success: true,
+      data: existingPrice.get({ plain: true }),
+      message: 'Harga berhasil diperbarui'
+    };
+  } catch (error: any) {
+    logger.error(`Error updating product price ${priceId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Lock a product price as standard (only SUPER_ADMIN)
+ */
+export const lockPriceAsStandard = async (
+  priceId: number,
+  userContext: UserContext
+) => {
+  if (userContext.role !== 'SUPER_ADMIN') {
+    return {
+      success: false,
+      error: 'UNAUTHORIZED: Hanya SUPER_ADMIN yang dapat mengunci harga sebagai standar.',
+      code: 'INSUFFICIENT_PERMISSION'
+    };
+  }
+
+  try {
+    const ProductPrice = sequelize.models.ProductPrice;
+    const price = await ProductPrice.findByPk(priceId) as any;
+    
+    if (!price) {
+      return { success: false, error: 'Price record not found' };
+    }
+
+    await price.update({
+      is_standard: true,
+      locked_by: userContext.userId,
+      locked_at: new Date()
+    });
+
+    logger.info(`Price ${priceId} locked as standard by SUPER_ADMIN ${userContext.userId}`);
+
+    return {
+      success: true,
+      message: 'Harga berhasil dikunci sebagai harga standar Pusat',
+      data: price.get({ plain: true })
+    };
+  } catch (error: any) {
+    logger.error(`Error locking price ${priceId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Unlock a standard price (only SUPER_ADMIN)
+ */
+export const unlockStandardPrice = async (
+  priceId: number,
+  userContext: UserContext
+) => {
+  if (userContext.role !== 'SUPER_ADMIN') {
+    return {
+      success: false,
+      error: 'UNAUTHORIZED: Hanya SUPER_ADMIN yang dapat membuka kunci harga standar.',
+      code: 'INSUFFICIENT_PERMISSION'
+    };
+  }
+
+  try {
+    const ProductPrice = sequelize.models.ProductPrice;
+    const price = await ProductPrice.findByPk(priceId) as any;
+    
+    if (!price) {
+      return { success: false, error: 'Price record not found' };
+    }
+
+    await price.update({
+      is_standard: false,
+      locked_by: null,
+      locked_at: null
+    });
+
+    logger.info(`Price ${priceId} unlocked from standard by SUPER_ADMIN ${userContext.userId}`);
+
+    return {
+      success: true,
+      message: 'Harga standar berhasil dibuka kuncinya',
+      data: price.get({ plain: true })
+    };
+  } catch (error: any) {
+    logger.error(`Error unlocking price ${priceId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Get products with aggregation across all branches (for HQ reporting)
+ */
+export const getProductsAggregated = async (
+  filter: ProductFilter = {},
+  userContext: UserContext
+) => {
+  // Only SUPER_ADMIN and ADMIN can aggregate all branches
+  if (!['SUPER_ADMIN', 'ADMIN'].includes(userContext.role)) {
+    return getProducts(filter, userContext.tenantId);
+  }
+
+  try {
+    const Product = sequelize.models.Product;
+    const ProductPrice = sequelize.models.ProductPrice;
+    const Branch = sequelize.models.Branch;
+
+    if (!Product || !ProductPrice) {
+      throw new Error('Required models not found');
+    }
+
+    // Get all products with prices across all branches
+    const products = await Product.findAll({
+      include: [
+        {
+          model: ProductPrice,
+          as: 'prices',
+          include: [
+            { model: Branch, as: 'branch', required: false }
+          ]
+        }
+      ],
+      where: filter.search ? {
+        [Op.or]: [
+          { name: { [Op.iLike]: `%${filter.search}%` } },
+          { sku: { [Op.iLike]: `%${filter.search}%` } }
+        ]
+      } : undefined
+    });
+
+    // Aggregate price data per product
+    const aggregatedProducts = products.map((product: any) => {
+      const plainProduct = product.get({ plain: true });
+      const prices = plainProduct.prices || [];
+      
+      return {
+        ...plainProduct,
+        priceStats: {
+          standardPrice: prices.find((p: any) => p.is_standard)?.price || null,
+          minPrice: Math.min(...prices.map((p: any) => parseFloat(p.price) || 0)),
+          maxPrice: Math.max(...prices.map((p: any) => parseFloat(p.price) || 0)),
+          avgPrice: prices.length > 0 
+            ? prices.reduce((sum: number, p: any) => sum + parseFloat(p.price || 0), 0) / prices.length 
+            : 0,
+          branchCount: new Set(prices.map((p: any) => p.branch_id).filter(Boolean)).size,
+          hasStandardPrice: prices.some((p: any) => p.is_standard)
+        }
+      };
+    });
+
+    return {
+      products: aggregatedProducts,
+      total: aggregatedProducts.length,
+      isAggregated: true,
+      isFromMock: false
+    };
+  } catch (error: any) {
+    logger.error('Error getting aggregated products:', error);
+    throw error;
+  }
+};
+
+/**
+ * Log price changes for audit trail
+ */
+const logPriceChange = async (
+  priceId: number,
+  oldPrice: number,
+  newPrice: number | undefined,
+  userContext: UserContext
+) => {
+  try {
+    const AuditLog = sequelize.models.AuditLog;
+    if (AuditLog && newPrice !== undefined) {
+      await AuditLog.create({
+        entity_type: 'ProductPrice',
+        entity_id: priceId.toString(),
+        action: 'UPDATE',
+        old_values: JSON.stringify({ price: oldPrice }),
+        new_values: JSON.stringify({ price: newPrice }),
+        user_id: userContext.userId,
+        user_role: userContext.role,
+        branch_id: userContext.branchId,
+        is_hq_intervention: ['SUPER_ADMIN', 'ADMIN'].includes(userContext.role) && userContext.branchId !== userContext.branchId,
+        ip_address: null,
+        created_at: new Date()
+      });
+    }
+  } catch (error) {
+    logger.warn('Failed to log price change:', error);
+  }
+};
+
 export default {
   getProducts,
   getProductById,
@@ -425,5 +728,10 @@ export default {
   updateProduct,
   deleteProduct,
   getLowStockProducts,
-  getTolingProducts
+  getTolingProducts,
+  updateProductPrice,
+  lockPriceAsStandard,
+  unlockStandardPrice,
+  getProductsAggregated,
+  canModifyStandardPrice
 };
